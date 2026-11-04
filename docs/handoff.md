@@ -41,10 +41,11 @@ Details are in [plans/backend.md](plans/backend.md) (each finished step has a
      works; solid and rainbow show placeholders (a frame, moving stripes).
    - **the song list:** YouTube links, each with a short title for the phone
      (YouTube's own titles are too long). Max ~7 min per song.
-2. **Write the frontend plan** – recommended next, it needs no input. The WebSocket protocol and its schema
-   (`src/backend/schema/messages.json`) exist since step 6, so the frontend can
-   start in parallel with steps 7–10. There is no `docs/plans/frontend.md`
-   yet; `docs/preview.html` is the clickable mockup to start from.
+2. **Confirm the frontend plan's decisions** ([plans/frontend.md](plans/frontend.md),
+   the numbered list under "Starting point"), then start its step 1
+   (tooling). Steps 1–6 need nothing from the backend's open steps; step 7
+   (music) waits for backend step 8. `docs/preview.html` is the clickable
+   mockup the screens follow.
 
 ## How to pick up
 
