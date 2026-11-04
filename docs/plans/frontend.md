@@ -291,12 +291,46 @@ Files: `components/Preview.tsx`, `Terminal.tsx`, `LoadingScreen.tsx`,
 
 Done when:
 
-- [ ] Vitest: the 8x8 decodes `183c7effff7e3c18` into the right pixels and
+- [x] Vitest: the 8x8 decodes `183c7effff7e3c18` into the right pixels and
   dims with the brightness; the terminal keeps 300 lines after 1000, colours
   every level, and shows `<b>` as text; the loading screen ends within 2–4 s
   and sends `loading_started` once
-- [ ] a dev-only page in Vite (`/components.html`, left out of the build)
-  shows every component with fake data, for checking them by eye
+- [x] a dev-only page in Vite (`/components.html`, left out of the build)
+  shows every component with fake data, for checking them by eye – the page
+  is there and served; **looking at it** needs a browser
+
+Built:
+
+- `styles/tokens.css`: the mockup's variables and base styles; the fonts
+  from `@fontsource` (Unbounded 500/700/800, Manrope 400/600/700, JetBrains
+  Mono 400/600), only the latin and latin-ext subsets (Slovak needs both).
+  The build bundles them: 16 font files, ~1.2 MB in all with the app.
+  `styles/components.css`: the components' styles, from the mockup.
+- every component is pure (props in, no store), with a `Live…` wrapper that
+  reads the store: `Preview` / `LivePreview` / `LiveStrip` (`small`,
+  `phone`, `large`), `Terminal` / `LiveTerminal`, `Badge` / `LiveBadge`,
+  `LiveToast` (the store's toasts; not in the plan's list, but every screen
+  needs it). `LoadingScreen`, `Qr` (+ `wifiQr()`, which escapes `\ ; , : "`)
+  and `Countdown` (with an optional ring, the phone's turn timer) take props.
+- Preview: an LED darker than r+g+b = 18 shows as off (as in the mockup);
+  the 8x8's brightness 0–15 sets `--level`, which dims the lit pixels.
+- Terminal: lines keyed by a running id the store gives them (`LogEntry`),
+  each row memoised, so a batch renders only its new rows; newest at the
+  bottom with `justify-content: flex-end`, no scrolling code; the banner from
+  the mockup. Times in the notebook's local time.
+- LoadingScreen: 2 s to just under 4 s, the pause at 100 % included, so it
+  is over within 4 s; `loading_started` once, also in StrictMode (refs).
+- `useServerClock()` and the new `useSend()` work outside a provider too (a
+  local clock, a send that does nothing), so the components page and the
+  tests need no backend.
+- `/components.html` + `src/dev/components.tsx`: every component, moving:
+  the preview at 10 frames a second, the terminal with a `<b>` line every
+  13th, the loading screen with "Znova", both QR codes, the countdowns,
+  every badge.
+- the hello pages show the live preview, the badge, the toast, and (internal
+  pages) the live terminal, so `./dod sim` shows them with real data.
+- 81 frontend tests, ~2 s; two deliberate breaks (`loading_started` sent
+  twice, the 8x8's bits reversed) make the right tests fail.
 
 ### Step 4. The logging page (`/internal/logging`)
 

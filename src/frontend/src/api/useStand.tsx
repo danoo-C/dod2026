@@ -8,7 +8,8 @@
 // component that reads the whole snapshot re-renders with every one of them.
 import { createContext, useContext, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 
-import type { ServerClock } from "./clock";
+import { ServerClock } from "./clock";
+import type { Incoming } from "./messages";
 import type { Role } from "./roles";
 import { Stand, type Snapshot } from "./store";
 
@@ -39,6 +40,16 @@ export function useStandActions(): Pick<Stand, "send" | "takeOver" | "role"> {
   return useStandContext();
 }
 
+// Outside a provider (the components page, a component's test) there is no
+// server: the clock is the local one, and sending does nothing.
+const LOCAL_CLOCK = new ServerClock();
+const NOWHERE = (_msg: Incoming): boolean => false;
+
 export function useServerClock(): ServerClock {
-  return useStandContext().store.clock;
+  return useContext(StandContext)?.store.clock ?? LOCAL_CLOCK;
+}
+
+/** send() of the screen's connection, or one that sends nothing outside a provider. */
+export function useSend(): (msg: Incoming) => boolean {
+  return useContext(StandContext)?.send ?? NOWHERE;
 }

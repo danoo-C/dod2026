@@ -19,6 +19,11 @@ const TOASTS: Partial<Record<ErrorMessage["code"], string>> = {
   unknown_song: "Túto skladbu teraz nemáme.",
 };
 
+/** A log line with a running number, so a list of them has stable keys. */
+export interface LogEntry extends LogLine {
+  id: number;
+}
+
 export interface Toast {
   id: number;
   text: string;
@@ -30,7 +35,7 @@ export interface Snapshot {
   state: StateMessage | null;
   you: You | null;
   preview: Preview | null;
-  log: readonly LogLine[];
+  log: readonly LogEntry[];
   toast: Toast | null;
 }
 
@@ -49,6 +54,7 @@ export class Store {
   private snapshot: Snapshot = EMPTY;
   private listeners = new Set<() => void>();
   private toasts = 0;
+  private lines = 0;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(clock: ServerClock = new ServerClock()) {
@@ -82,7 +88,7 @@ export class Store {
       case "preview":
         return this.update({ preview: msg });
       case "log": {
-        const log = [...this.snapshot.log, ...msg.lines];
+        const log = [...this.snapshot.log, ...msg.lines.map((line) => ({ ...line, id: ++this.lines }))];
         return this.update({ log: log.length > LOG_LINES ? log.slice(-LOG_LINES) : log });
       }
       case "error": {

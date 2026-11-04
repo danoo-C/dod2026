@@ -15,14 +15,16 @@ note) and the design in [backend.md](backend.md).
   control and use the admin commands; every browser gets state, its own queue
   position and live previews over the WebSocket; `main` and `logging` get the
   fake logs, starting with the last 300 lines.
-- **Frontend: steps 1–2 of 8 done** (tooling, the connection). React + Vite
-  in `src/frontend/`, `./dod sim` runs the backend and Vite together on
-  http://localhost:5173. Every screen connects with its role, reconnects by
-  itself, and handles the close codes; the store and `useStand()` are what
-  the screens will read. Every route still shows a hello page, now with the
-  connection's status, the queue and a countdown.
+- **Frontend: steps 1–3 of 8 done** (tooling, the connection, the shared
+  components). React + Vite in `src/frontend/`, `./dod sim` runs the backend
+  and Vite together on http://localhost:5173. Every screen connects with its
+  role and reconnects by itself; the components (preview, terminal, loading
+  screen, QR, countdown, badge, toast) have the mockup's look, and
+  http://localhost:5173/components.html shows them all with fake data. Every
+  route still shows a hello page, now with the live preview, badge and
+  terminal.
 - **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 424
-  (~19 s), frontend 53 (~1.3 s, plus the type checks).
+  (~19 s), frontend 81 (~2 s, plus the type checks).
 - **Git:** `dod2026/` is its own repo (branch `main`, no remote yet).
 
 | Step | What | State |
@@ -56,13 +58,16 @@ note) and the design in [backend.md](backend.md).
    - open `/internal/main?key=dev` in two windows: the first one says
      "Otvorené v inom okne", "Prevziať" takes it back
    - "Postaviť sa do radu" on `/`: the countdown runs
+   - http://localhost:5173/components.html: every component looks like the
+     mockup (`docs/preview.html`), the terminal scrolls, the loading screen
+     runs 2–4 s
    For a phone, WSL's NAT mode needs a change on Windows first (frontend
    plan, step 1, "Built").
-3. **Frontend step 3** (the shared components: preview, terminal, loading
-   screen, QR, countdown, badge, the mockup's colours) – recommended next, it
-   needs no input. Steps 3–6 need nothing from the backend's open steps;
-   step 7 (music) waits for backend step 8. `docs/preview.html` is the
-   clickable mockup the screens follow.
+3. **Frontend step 4** (the logging page: the terminal full screen) –
+   recommended next, it needs no input, and it is the first real screen.
+   Steps 4–6 need nothing from the backend's open steps; step 7 (music)
+   waits for backend step 8. `docs/preview.html` is the clickable mockup the
+   screens follow.
 
 ## How to pick up
 

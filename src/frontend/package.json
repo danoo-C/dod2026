@@ -11,6 +11,10 @@
     "test": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && node scripts/types.mjs --check && vitest run"
   },
   "dependencies": {
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/manrope": "5.3.0",
+    "@fontsource/unbounded": "5.3.0",
+    "qrcode.react": "4.2.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "react-router": "8.5.0"

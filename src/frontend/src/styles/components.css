@@ -1,0 +1,352 @@
+/* The shared components (plan step 3), as in docs/preview.html. */
+
+/* ---------- Preview: the strip and the 8x8 ---------- */
+.pv {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pv-gap, 10px);
+  max-width: 100%;
+}
+.pv.large {
+  --led: clamp(14px, 2.2vw, 26px);
+  --led-gap: 8px;
+  --mx: clamp(90px, 13vw, 170px);
+  --px-gap: 4px;
+  --pv-gap: 14px;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.pv.phone {
+  --led: 9px;
+  --led-gap: 4px;
+  --mx: 64px;
+}
+.strip {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--led-gap, 5px);
+  padding: 6px 9px;
+  background: #07080f;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.pv.phone .strip {
+  padding: 5px 7px;
+}
+.led {
+  width: var(--led, 11px);
+  height: var(--led, 11px);
+  border-radius: 50%;
+  background: var(--led-dim);
+}
+.matrix {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: var(--px-gap, 2px);
+  width: var(--mx, 58px);
+  aspect-ratio: 1;
+  max-width: 100%;
+  padding: 4px;
+  background: var(--matrix-bg);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.px {
+  border-radius: 50%;
+  background: var(--led-off);
+}
+.px.on {
+  /* --level: the matrix's brightness, 0-1 (the MAX7219 has 16 steps) */
+  background: rgb(255 61 46 / calc(0.35 + 0.65 * var(--level, 1)));
+  box-shadow: 0 0 calc(2px + 4px * var(--level, 1)) rgb(255 61 46 / var(--level, 1));
+}
+
+/* ---------- Terminal ---------- */
+.term {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  background: var(--term);
+}
+.term-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  font: 600 11px/1 var(--f-mono);
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+}
+.term-head i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.term-head i:nth-child(1) {
+  background: var(--hot);
+}
+.term-head i:nth-child(2) {
+  background: var(--warm);
+}
+.term-head i:nth-child(3) {
+  background: var(--ok);
+}
+.term-head span {
+  margin-left: 6px;
+}
+.term-body {
+  /* newest line at the bottom; the oldest leave at the top, no scrolling needed */
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  font: 400 var(--term-font, clamp(9.5px, 0.85vw, 11.5px)) / 1.45 var(--f-mono);
+  color: #c9cde6;
+}
+.ln {
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: clip;
+}
+.ln .ts {
+  color: #565b80;
+}
+.ln .tg {
+  font-weight: 600;
+}
+.tg-hot {
+  color: var(--hot);
+}
+.tg-warm {
+  color: var(--warm);
+}
+.tg-cool {
+  color: var(--cool);
+}
+.tg-ok {
+  color: var(--ok);
+}
+.tg-vio {
+  color: var(--vio);
+}
+.lv-INFO {
+  color: var(--cool);
+}
+.lv-WARN {
+  color: var(--warm);
+}
+.lv-DEBUG {
+  color: #6d7299;
+}
+.lv-OK {
+  color: var(--ok);
+}
+.banner {
+  white-space: pre;
+  color: var(--hot);
+  line-height: 1.15;
+  margin-bottom: 6px;
+  overflow: hidden;
+  flex: none;
+}
+.cur {
+  display: inline-block;
+  width: 0.6em;
+  height: 1.1em;
+  background: var(--ok);
+  vertical-align: text-bottom;
+  animation: blink 1s steps(1) infinite;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* ---------- LoadingScreen ---------- */
+.load {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  padding: 10px 6px 30px;
+  max-width: 420px;
+  margin: 0 auto;
+  width: 100%;
+}
+.load h2 {
+  margin: 0;
+  font: 700 18px/1.2 var(--f-display);
+}
+.ring {
+  width: 170px;
+  height: 170px;
+  position: relative;
+}
+.ring svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.ring .pct {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font: 800 34px/1 var(--f-display);
+  font-variant-numeric: tabular-nums;
+}
+.ring .spin {
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+  border: 2px dashed var(--line);
+  animation: spin 6s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+}
+.steps div {
+  display: flex;
+  gap: 8px;
+  color: var(--muted);
+}
+.steps div.done {
+  color: var(--fg);
+}
+.steps div.done::before {
+  content: "✓";
+  color: var(--ok);
+  font-weight: 700;
+}
+.steps div.now::before {
+  content: "›";
+  color: var(--warm);
+  font-weight: 700;
+}
+.steps div.todo::before {
+  content: "·";
+}
+.hex {
+  font: 400 11px/1.4 var(--f-mono);
+  color: #565b80;
+  word-break: break-all;
+  height: 46px;
+  overflow: hidden;
+  width: 100%;
+}
+
+/* ---------- Qr ---------- */
+.qr {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font: 600 10px/1 var(--f-mono);
+  color: var(--muted);
+}
+.qr svg {
+  width: var(--qr, 64px);
+  height: var(--qr, 64px);
+  border-radius: 4px;
+  background: var(--qr-light);
+  display: block;
+}
+
+/* ---------- Countdown ---------- */
+.countdown {
+  font: 700 14px/1 var(--f-mono);
+  font-variant-numeric: tabular-nums;
+}
+.timer {
+  width: 64px;
+  height: 64px;
+  position: relative;
+  flex: none;
+}
+.timer svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+.timer .countdown {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* ---------- Badge ---------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  font: 600 11px/1 var(--f-mono);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.badge i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.badge.ok i {
+  color: var(--ok);
+}
+.badge.warn i {
+  color: var(--warm);
+}
+.badge.bad {
+  border-color: var(--hot);
+  color: var(--fg);
+}
+.badge.bad i {
+  color: var(--hot);
+}
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  max-width: calc(100% - 32px);
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--hot);
+  box-shadow: 0 12px 30px rgb(0 0 0 / 0.45);
+  font-weight: 600;
+  z-index: 10;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cur,
+  .ring .spin {
+    animation: none;
+  }
+}

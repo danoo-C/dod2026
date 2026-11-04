@@ -3,6 +3,8 @@ import { createRoot } from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router";
 
 import { routes } from "./routes";
+import "./styles/tokens.css";
+import "./styles/components.css";
 
 const root = document.getElementById("root");
 if (root === null) {
