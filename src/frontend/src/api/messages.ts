@@ -142,6 +142,7 @@ export interface OptionInfo {
  */
 export interface SongInfo {
   id: string;
+  title: string;
   length: number | null;
   ready: boolean;
 }
@@ -176,6 +177,7 @@ export interface ManualPart {
  */
 export interface MusicPart {
   song: string | null;
+  title: string | null;
   started_at: number | null;
   length: number | null;
   playing: boolean;

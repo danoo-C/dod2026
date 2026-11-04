@@ -210,14 +210,54 @@ Files: `api/socket.ts`, `api/store.ts`, `api/clock.ts`
 
 Done when:
 
-- [ ] with a fake WebSocket in Vitest: each close code does what the table
+- [x] with a fake WebSocket in Vitest: each close code does what the table
   says; the backoff stays between 0.5 and 5 s; `4401` calls `/api/session`
   once, then connects
-- [ ] the clock offset is right with a phone clock 30 s off; a countdown
+- [x] the clock offset is right with a phone clock 30 s off; a countdown
   shows the same seconds as the server
 - [ ] by hand with `./dod sim`: stopping the backend shows "odpojené" and the
   page comes back by itself when it starts again; a second main screen shows
-  "Otvorené v inom okne" on the first
+  "Otvorené v inom okne" on the first – **needs a browser**, see Built
+
+Built:
+
+- `api/socket.ts`: `StandSocket` – `/api/session` (the internal key once,
+  then out of the address bar with `history.replaceState`), the WebSocket,
+  the close codes as in the table. Statuses: `connecting`, `open` (after
+  `welcome`), `offline`, `replaced`, `forbidden` (also a wrong key: 403 from
+  `/api/session`), `broken`. Every retry starts with `/api/session`, so a
+  restarted backend is fine; the first `4401` fetches it at once, a second
+  one backs off. Backoff 0.5 → 1 → 2 → 4 → 5 s, ±20 %, clamped to 0.5–5 s,
+  back to 0.5 s after a `welcome`. `visibilitychange` (and `online`) while
+  waiting: try at once. `send()` returns false unless open, nothing is kept.
+- `api/clock.ts`: `ServerClock` – the offset is the **largest of the last 10**
+  `server now − local` samples: a message can only arrive late, never early,
+  so a late one would make the offset too small; a clock set while the page
+  runs is followed within 10 states. `secondsUntil()`, `formatSeconds()`.
+- `api/store.ts`: `Store` (one immutable snapshot: status, welcome, state,
+  you, preview, the last 300 log lines, a toast) and `Stand` (the socket
+  feeding a store). Toasts: `not_your_turn`, `no_player` and also
+  `unknown_song` (a song taken off the list while a phone shows it), 3 s;
+  `rate_limited` ignored; `invalid` and `forbidden` go to the console (bugs).
+- `api/useStand.tsx`: `<StandProvider role>`, `useStand(select)` (re-renders
+  only when the selected part changes – previews come 10 times a second),
+  `useStandActions()` (`send`, `takeOver`), `useServerClock()`.
+- `components/Connection.tsx`: `ConnectionGate` – `replaced` (with
+  "Prevziať"), `forbidden` and `broken` take the whole screen; `offline` is a
+  strip on top and the screen stays. Plain styles until step 3.
+- the hello page now shows the connection: status, session, mode, the queue,
+  the turn's countdown on the server's clock, the clock offset, the number
+  of log lines (internal pages); the phone's has "Postaviť sa do radu" /
+  "Odísť z radu", to see a countdown run.
+- fixed on the way: the type generator dropped every *field* called `title`
+  (`MusicPart.title`, `SongInfo.title`) along with the schema titles it
+  should drop; it now also fails when a model's field is missing from
+  `messages.ts`.
+- 53 frontend tests, ~1.3 s; two deliberate breaks (4001 treated as a lost
+  connection, no backoff wait) each make the right tests fail.
+- checked by hand: the build bundles, and `./dod sim` serves every new module.
+  **Not checked yet** (needs a browser): the two checks above, and the
+  phone's countdown against the server.
 
 ### Step 3. Shared components
 

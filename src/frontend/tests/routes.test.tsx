@@ -1,15 +1,20 @@
-// Each route shows its screen and asks the backend whether it runs (plan step 1).
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+// Each route is its screen, with its own connection and role (plan steps 1-2).
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { routes, SCREENS } from "../src/routes";
+import { FakeWebSocket, install } from "./support/fakes";
 
-afterEach(cleanup);
+beforeEach(() => {
+  vi.useFakeTimers();
+  install();
+});
 
-function show(path: string) {
-  render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
-}
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 describe("routes", () => {
   it("has the three screens of tech-spec 5.1, each with its role", () => {
@@ -20,18 +25,14 @@ describe("routes", () => {
     ]);
   });
 
-  it.each(SCREENS)("$path shows the $role screen and a running backend", async ({ path, role }) => {
-    const fetch = vi.fn(async () => new Response(JSON.stringify({ status: "ok" })));
-    vi.stubGlobal("fetch", fetch);
-    show(path);
+  it.each(SCREENS)("$path connects as $role", async ({ path, role }) => {
+    render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
     expect(screen.getByText(role)).toBeTruthy();
-    await waitFor(() => expect(screen.getByTestId("health").textContent).toBe("Backend: beží"));
-    expect(fetch).toHaveBeenCalledWith("/api/health");
-  });
-
-  it("says when the backend doesn't answer", async () => {
-    vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 502 })));
-    show("/");
-    await waitFor(() => expect(screen.getByTestId("health").textContent).toBe("Backend: neodpovedá"));
+    expect(screen.getByTestId("status").textContent).toBe("Pripájam…");
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    expect(FakeWebSocket.last.url).toBe(`ws://localhost:3000/ws?role=${role}`);
+    act(() => FakeWebSocket.last.accept());
+    expect(screen.getByTestId("status").textContent).toBe("Pripojené");
+    expect(screen.getByTestId("session").textContent).toBe("7f3a");
   });
 });

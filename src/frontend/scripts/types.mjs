@@ -26,12 +26,19 @@ function simplify(node, isModel = false) {
   for (const [key, value] of Object.entries(node)) {
     if ((key === "title" && !isModel) || key === "minItems" || key === "maxItems") continue;
     if (key === "$defs") {
-      out.$defs = Object.fromEntries(Object.entries(value).map(([name, def]) => [name, simplify(def, true)]));
+      out.$defs = mapValues(value, (def) => simplify(def, true));
+    } else if (key === "properties") {
+      // the keys here are field names (a field may be called "title"); only their schemas are simplified
+      out.properties = mapValues(value, (field) => simplify(field));
     } else {
       out[key] = simplify(value);
     }
   }
   return out;
+}
+
+function mapValues(object, fn) {
+  return Object.fromEntries(Object.entries(object).map(([key, value]) => [key, fn(value)]));
 }
 
 async function build() {
@@ -54,7 +61,29 @@ export type Outgoing = Messages["outgoing"];
   );
 }
 
+/** Every field of every model is in the types (simplify() once dropped fields called "title"). */
+async function missingFields(ts) {
+  const schema = JSON.parse(await readFile(SCHEMA, "utf8"));
+  const missing = [];
+  for (const [name, def] of Object.entries(schema.$defs)) {
+    const body = ts.match(new RegExp(`export interface ${name} \\{([^]*?)\\n\\}`))?.[1];
+    if (body === undefined) {
+      missing.push(`${name} (no interface)`);
+      continue;
+    }
+    for (const field of Object.keys(def.properties ?? {})) {
+      if (!new RegExp(`^\\s+${field}\\??:`, "m").test(body)) missing.push(`${name}.${field}`);
+    }
+  }
+  return missing;
+}
+
 const ts = await build();
+const missing = await missingFields(ts);
+if (missing.length > 0) {
+  console.error(`the generated types lack: ${missing.join(", ")}`);
+  process.exit(1);
+}
 if (process.argv.includes("--check")) {
   const current = await readFile(OUT, "utf8").catch(() => "");
   if (current !== ts) {
