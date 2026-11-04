@@ -24,11 +24,14 @@ from dod.bus import Bus
 from dod.engine.effects import PRESETS
 from dod.engine.effects.base import Effect
 from dod.engine.effects.idle import Idle
-from dod.engine.effects.rainbow import Rainbow
+from dod.engine.effects.music import Music
 from dod.engine.loop import RenderLoop
 from dod.engine.output import OutputStage
 from dod.logs.generator import LogGenerator
 from dod.logs.templates import Facts
+from dod.music.audio import AudioInput
+from dod.music.library import SONGS_FILE, Library, SongListError
+from dod.music.player import Player
 from dod.settings import Settings, SettingsError
 from dod.state import State
 from dod.tasks import Supervisor
@@ -44,27 +47,32 @@ LOG_FORMATS = {
 
 
 def create_app(settings: Settings | None = None, *, link: Any = None,
-               restart_seconds: float | None = None, frontend_dist: Path | None = None) -> FastAPI:
+               restart_seconds: float | None = None, frontend_dist: Path | None = None,
+               songs_file: Path | None = None) -> FastAPI:
     """The app. Without `settings`, they are read from the environment, and a
     wrong one stops the process with a message naming the variable.
 
     `link` replaces the link to the board from DOD_SERIAL (tests pass one from
     hcl.testing.sim_link()); main.py never imports hcl itself. `frontend_dist`
-    replaces the frontend's build folder (src/frontend/dist).
+    replaces the frontend's build folder (src/frontend/dist), `songs_file`
+    the song list (dod/music/songs.txt).
     """
     if settings is None:
         settings = settings_or_exit()
     setup_logging(settings.log_level)
+    library = library_or_exit(songs_file or SONGS_FILE, settings.cache_dir)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         # 1.-2. the parts that don't need anything else
         bus = Bus()
         state = State(settings, bus)
+        audio = AudioInput(delay=settings.audio_delay_ms / 1000)
+        player = Player(state, library)
         # the fake logs listen from the start, so the board's first events make it in;
         # hub, hw and loop are created below, before the generator's task runs
         logs = LogGenerator(bus, send=lambda lines: hub.send_log(lines),
-                            facts=lambda: log_facts(hw, loop, state, hub))
+                            facts=lambda: log_facts(hw, loop, state, hub, audio))
         # 3. the hardware: connecting runs in the background, nothing waits for it
         hw = hardware.Hardware(link if link is not None else hardware.open_link(settings), bus,
                                fallback_led_count=settings.led_count,
@@ -73,22 +81,25 @@ def create_app(settings: Settings | None = None, *, link: Any = None,
         state.set_hardware(hw.status.for_pages())
         await hw.start()
         # the browsers' hub, so the engine can send it previews
-        hub = Hub(state, bus, settings, songs=app.state.songs, log_history=logs.history)
+        hub = Hub(state, bus, settings, songs=app.state.songs, log_history=logs.history,
+                  play_song=player.play, on_spectrum=lambda msg: audio.push(msg.bands, msg.beat),
+                  on_player=player.on_player)
         state.on_change(hub.state_changed)
         # 4. the engine, following the state
         stage = OutputStage(brightness=settings.brightness, power_limit_ma=settings.power_limit_ma)
-        loop = RenderLoop(hw, stage, effect=Idle(), on_fallback=state.effect_failed, on_preview=hub.preview)
+        loop = RenderLoop(hw, stage, effect=Idle(), on_fallback=state.effect_failed, on_preview=hub.preview,
+                          audio=audio.current)
         state.on_change(SceneSync(loop))
         # 5. the background tasks
         tasks = Supervisor() if restart_seconds is None else Supervisor(restart_seconds)
         tasks.start("render loop", loop.run)
         tasks.start("hcl events", hw.run_events)
         tasks.start("status poller", hw.poll_status)
-        tasks.start("queue clock", lambda: queue_clock(state))
+        tasks.start("queue clock", lambda: queue_clock(state, player))
         tasks.start("state broadcaster", hub.run)
         tasks.start("log generator", logs.run)
         app.state.bus, app.state.state, app.state.hardware = bus, state, hw
-        app.state.logs = logs
+        app.state.logs, app.state.player, app.state.audio = logs, player, audio
         app.state.loop, app.state.tasks, app.state.hub = loop, tasks, hub
         # 6. where the internal pages are
         log.info("main screen:  %s/internal/main?key=%s", settings.public_url, settings.internal_key)
@@ -105,34 +116,36 @@ def create_app(settings: Settings | None = None, *, link: Any = None,
 
     app = FastAPI(title="DOD 2026", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan)
     app.state.settings = settings
-    app.state.songs = lambda: []  # the song list (plan step 8)
+    app.state.library = library
+    app.state.songs = library.infos  # the song list, for welcome and /api/songs
     app.include_router(http.router)
     app.include_router(ws.router)
     http.mount_frontend(app, frontend_dist if frontend_dist is not None else http.FRONTEND_DIST)
     return app
 
 
-async def queue_clock(state: State) -> None:
-    """Task: turns end and idle mode starts even when nobody sends anything."""
+async def queue_clock(state: State, player: Player) -> None:
+    """Task: turns end, songs end and idle mode starts even when nobody sends anything."""
     while True:
         state.tick()
+        player.tick()
         await asyncio.sleep(QUEUE_CLOCK_SECONDS)
 
 
-def log_facts(hw: hardware.Hardware, loop: RenderLoop, state: State, hub: Hub) -> Facts:
+def log_facts(hw: hardware.Hardware, loop: RenderLoop, state: State, hub: Hub, audio: AudioInput) -> Facts:
     """The real numbers for the fake logs (docs/backend.md 10)."""
     status, out = hw.status, loop.last_output
     frame = b"" if out is None else bytes(c for led in out.hardware.leds for c in led) + out.hardware.matrix
     return Facts(frame_no=loop.ticks, bytes_tx=status.bytes_tx, link_fps=status.fps,
                  render_fps=loop.fps, rtt_ms=status.rtt_ms, led_count=status.led_count, mode=state.mode,
                  preset=state.preset, connections=len(hub.connections), waiting=len(state.queue.waiting),
-                 frame=frame)
+                 frame=frame, beat=audio.beat if state.mode == "music" else None)
 
 
 class SceneSync:
     """State listener: the render loop shows what the state says (docs/backend.md 6, 7.4)."""
 
-    MUSIC_EFFECT: type[Effect] = Rainbow  # until the music effect exists (plan step 8)
+    MUSIC_EFFECT: type[Effect] = Music
 
     def __init__(self, loop: RenderLoop) -> None:
         self._loop = loop
@@ -154,6 +167,15 @@ class SceneSync:
             self._loop.set_params(params)
         if self._loop.scene.drawing != drawing:
             self._loop.set_drawing(drawing)
+
+
+def library_or_exit(path: Path, cache_dir: Path) -> Library:
+    """The song list; a wrong line stops the backend with a message naming it."""
+    try:
+        return Library.from_file(path, cache_dir)
+    except SongListError as e:
+        print(f"dod: {path.name}: {e}", file=sys.stderr, flush=True)
+        raise SystemExit(1) from None
 
 
 def settings_or_exit() -> Settings:

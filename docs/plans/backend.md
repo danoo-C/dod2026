@@ -458,7 +458,8 @@ Files: `dod/music/songs.txt`, `library.py`, `download.py`, `audio.py`,
 `player.py`, `dod/engine/effects/music.py`; `/media/<id>.mp4` in `http.py`
 
 - `yt-dlp` (pinned), `ffmpeg` (apt) and `deno` (copied from
-  `denoland/deno:bin-<version>`, pinned) in the image
+  `denoland/deno:bin-<version>`, pinned) in the image – built: deno comes
+  with yt-dlp from PyPI instead, see Built
 - `songs.txt`: one YouTube link per line, an optional short title after it
   (YouTube's own titles are too long for a phone)
 - `./dod songs` downloads what is missing (max ~7 min, a format every browser
@@ -481,14 +482,65 @@ Files: `dod/music/songs.txt`, `library.py`, `download.py`, `audio.py`,
 
 Done when:
 
-- [ ] `./dod songs` downloads the list into `cache/`, a second run downloads nothing
-- [ ] a test song (a short generated clip, not from YouTube) is served with
+- [x] `./dod songs` downloads the list into `cache/`, a second run downloads
+  nothing – checked with one song (`./dod songs dQw4w9WgXcQ`), the whole list
+  is yours to run
+- [x] a test song (a short generated clip, not from YouTube) is served with
   range requests; `../etc/passwd`-style and unlisted ids get 404
-- [ ] a spectrum sent over the WebSocket changes the simulated board's picture
+- [x] a spectrum sent over the WebSocket changes the simulated board's picture
   within 2 frames; no spectrum for 200 ms fades it out
-- [ ] each of the three song endings returns to the preset; the controller's
+- [x] each of the three song endings returns to the preset; the controller's
   own song ending ends the turn (if someone waits); `no_player` without a
   main screen
+
+Built:
+
+- the image: `ffmpeg` from apt (7.1.5); `yt-dlp[default,pin-deno]==2026.10.21`
+  in `pyproject.toml` – the `pin-deno` extra installs deno 2.9.8 from PyPI as
+  a normal wheel, pinned by yt-dlp itself, so there is no second image to copy
+  it from. Both are two weeks old (2026-10-21). `./dod build` once.
+- `dod/music/library.py`: `parse()` (watch, youtu.be, shorts and
+  music.youtube links; a title of at most 40 characters is required; every bad
+  line named at once, like the settings), `Library` (`infos()`, `ready()`,
+  `length()`, `video()`); a song counts as downloaded when both `<id>.mp4` and
+  `<id>.json` are in the cache. A bad `songs.txt` stops the backend at startup
+  with the lines named.
+- `dod/music/download.py` = `./dod songs [id …]`: one song at a time into a
+  temporary folder in the cache, then `<id>.mp4` moved in and `<id>.json`
+  written (so an interrupted run leaves no half song); H.264 + AAC in mp4, at
+  most 720p; longer than 7 min is skipped; one failing song doesn't stop the
+  others; exit code 1 if any failed.
+- `dod/music/player.py`: `play()` (`no_player`, `unknown_song` for unlisted
+  or not downloaded), `on_player()` (messages for an older song ignored),
+  `tick()` on the queue clock: `overran` at length + 10 s, `player_gone` after
+  10 s without a message.
+- `dod/music/audio.py`: `AudioInput` – the spectra of the last 3 s, the one
+  from `DOD_AUDIO_DELAY_MS` ago, fading out over 0.3 s once it is 0.2 s old;
+  the render loop asks it every frame (`RenderLoop(audio=)`), the fake logs get
+  its beat.
+- `dod/engine/effects/music.py`: the bands along the strip (lows first) with
+  slowly drifting colours, a small lift on a beat (a 2 Hz beat passes the
+  flash limit untouched), 8 bars on the 8x8; silence is dark. `SceneSync`
+  runs it in music mode (the rainbow placeholder is gone).
+- `/media/<id>.mp4`: the name must match `^[A-Za-z0-9_-]{11}\.mp4$` and the
+  id be listed and downloaded – checked before any path is built. **Verified:**
+  Starlette's `FileResponse` answers `Range` with 206 (and `Accept-Ranges:
+  bytes`), nothing to add.
+- not built, on purpose: the background download on startup that tech-spec
+  5.2 and backend.md 4 mentioned. Songs come from `./dod songs` beforehand and
+  `cache/` goes to the notebook with the project; on the day no download
+  competes with the show for the network and a yt-dlp failure can't surface
+  mid-show. tech-spec 4.2 and 5.2 and backend.md 4 say so now.
+- tests: the list and the links, the cache, the downloader with a fake fetch,
+  the player's three endings and the turn, the spectrum's delay and fade, the
+  music effect, `/media` with a 2 s test clip made by ffmpeg (whole, ranges,
+  every kind of bad name), and through the app: `no_player`, and a spectrum on
+  the board within 2 frames that fades without new ones. 793 backend tests,
+  ~22 s; three deliberate breaks (`/media` without the list check, no grace
+  after the length, no fade) make the right tests fail.
+- checked by hand: `./dod songs dQw4w9WgXcQ` – 3.5 min, 30 MB, 14 s, H.264
+  1280×720 + AAC; a second run: "have"; `./dod backend` serves it with 206 for
+  a range, `/api/songs` shows it ready, an unlisted id gets 404.
 
 ### Step 9. The fake logs (backend.md 10, tech-spec 4.5)
 

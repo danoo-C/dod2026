@@ -51,9 +51,9 @@ This file is the source of truth for everything between the browsers and
   FastAPI anyway).
 - `hcl` (`src/hcl`), installed in editable mode in the same image.
 - `yt-dlp` + `ffmpeg` + `deno` for downloading songs (tech-spec 5.2). ffmpeg
-  comes from apt; deno has no Debian package, so it is copied from the
-  official image in one pinned line:
-  `COPY --from=denoland/deno:bin-<version> /deno /usr/local/bin/deno`.
+  comes from apt; deno comes with yt-dlp itself, from PyPI:
+  `yt-dlp[default,pin-deno]==<version>` pins deno to the version that yt-dlp
+  wants (decided in plan step 8, instead of copying it from deno's image).
 - **No numpy.** The strip has 10 LEDs and the matrix 64 pixels; plain Python
   renders a frame in well under a millisecond, and the image stays smaller.
   If an effect ever needs it, it can be added then.
@@ -119,7 +119,8 @@ src/backend/
    events, `start()` – connecting runs in the background, nothing waits for it
 4. create the engine and start the render loop
 5. start the background tasks: HCL events → bus, status poller, queue clock,
-   log generator, song downloader (if songs are missing and there is internet)
+   log generator (songs are downloaded beforehand with `./dod songs`, not by
+   the running backend – plan step 8)
 6. print the internal pages' URLs with the key (`…/internal/main?key=…`), so
    they can be opened in development and are in `docker logs` on the notebook
 7. serve
@@ -140,7 +141,6 @@ All asyncio, all in one event loop:
 | status poller | 1 / s | `link.status` → state's hardware part, numbers for the logs |
 | queue clock | 4 / s | ends turns, releases inactive controllers (section 8), ends a song the main screen stopped reporting (section 6) |
 | log generator | 3–40 lines / s | real events from the bus + filler (section 10) |
-| downloader | when needed | missing songs, one at a time, in a thread |
 | WebSocket handlers | per message | one per connected browser (section 9) |
 
 A task that crashes is logged and restarted after a second; it never takes
@@ -157,8 +157,8 @@ bus.publish(PresetChanged(preset="fire", by="7f3a"))
 async for event in bus.subscribe(): ...
 ```
 
-`publish()` never waits and must be called from the event loop's thread; the
-downloader thread uses `loop.call_soon_threadsafe(bus.publish, event)`. A
+`publish()` never waits and must be called from the event loop's thread; a
+thread would use `loop.call_soon_threadsafe(bus.publish, event)`. A
 listener that runs on its own clock (the log generator) takes what is queued
 with `take_all()` instead of iterating.
 

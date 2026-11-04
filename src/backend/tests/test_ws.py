@@ -5,6 +5,7 @@ through `client.portal.call`, so it runs in the app's event loop.
 """
 
 import json
+from pathlib import Path
 import time
 
 import pytest
@@ -15,6 +16,7 @@ from starlette.websockets import WebSocketDisconnect
 from dod.api.messages import LogLine
 from dod.control.sessions import INTERNAL_COOKIE, SESSION_COOKIE, new_token, public_id
 from dod.main import create_app
+from dod.music.library import SONGS_FILE, Library
 from dod.settings import Settings
 
 KEY = "test-key"
@@ -79,7 +81,9 @@ def test_a_phone_gets_welcome_state_and_you(client):
         assert welcome["session"] == public_id(token)[:4]
         assert [p["id"] for p in welcome["presets"]] == ["rainbow", "fire", "police", "breathe", "comet", "strobe", "solid"]
         assert welcome["presets"][0]["params"][0]["label"] == "Rýchlosť"
-        assert welcome["turn_seconds"] == 180 and welcome["songs"] == []
+        assert welcome["turn_seconds"] == 180
+        # the song list (dod/music/songs.txt); which are downloaded depends on cache/
+        assert [s["id"] for s in welcome["songs"]] == [s.id for s in Library.from_file(SONGS_FILE, Path("/tmp")).songs]
         state = ws.receive_json()
         assert state["type"] == "state" and state["mode"] == "idle"
         you = ws.receive_json()
@@ -173,7 +177,7 @@ def test_wrong_messages_get_errors(client):
             ({"type": "set_preset", "preset": "idle"}, "invalid"),
             ({"type": "admin", "action": "skip"}, "forbidden"),
             ({"type": "spectrum", "bands": [0.1] * 32}, "forbidden"),
-            ({"type": "play_song", "song": "dQw4w9WgXcQ"}, "unknown_song"),  # a main is connected, no songs yet
+            ({"type": "play_song", "song": "zzzzzzzzzzz"}, "unknown_song"),  # a main is connected, not on the list
         ]:
             phone.send_text(json.dumps(message))
             assert until(phone, "error")["code"] == code, message
@@ -361,7 +365,7 @@ def test_pages_set_the_session(client, path):
 
 
 def test_api_songs_and_status(client):
-    assert client.get("/api/songs").json() == []
+    assert [s["title"] for s in client.get("/api/songs").json()][:2] == ["Darude – Sandstorm", "Never Gonna Give You Up"]
     cm, _ = connect(client)
     with cm as ws:
         ws.receive_json()

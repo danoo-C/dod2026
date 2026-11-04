@@ -7,6 +7,11 @@ FROM python:3.13-slim
 # a Node stage here comes with the self-contained image for the notebook
 # (docs/plans/frontend.md, decision 6).
 WORKDIR /work
+# ffmpeg: yt-dlp merges a song's video and audio into one .mp4 with it, and the
+# tests make a short test clip with it (plan step 8)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends ffmpeg \
+ && rm -rf /var/lib/apt/lists/*
 COPY src/hcl/pyproject.toml src/hcl/pyproject.toml
 COPY src/backend/pyproject.toml src/backend/pyproject.toml
 # Empty packages stand in for the source, so pip can do the editable installs.

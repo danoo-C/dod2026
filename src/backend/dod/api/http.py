@@ -4,7 +4,8 @@
     GET /assets/*                              the rest of the frontend's build
     GET /api/session[?key=...]                 the session cookie; with the key, the internal one
     GET /api/status                            the HCL's, the render loop's and the tasks' view
-    GET /api/songs                             the song list (empty until plan step 8)
+    GET /api/songs                             the song list, and which songs are downloaded
+    GET /media/<id>.mp4                        a downloaded song, with range requests
     GET /api/health
 
 The frontend is served from its build, `src/frontend/dist` in the mounted
@@ -20,11 +21,12 @@ the internal cookie, HttpOnly, so page scripts never hold the key.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from dod.control.sessions import (
@@ -123,6 +125,22 @@ async def status(request: Request) -> dict[str, Any]:
 @router.get("/api/songs")
 async def songs(request: Request) -> list[dict[str, Any]]:
     return [s.model_dump() for s in request.app.state.songs()]
+
+
+MEDIA = re.compile(r"([A-Za-z0-9_-]{11})\.mp4")
+
+
+@router.get("/media/{name}")
+async def media(request: Request, name: str) -> Response:
+    """A downloaded song for the main screen's <video> (backend.md 9). The id is
+    checked against the pattern and the song list before it is used for a
+    path; anything else is 404. FileResponse answers Range with 206, so the
+    video can seek."""
+    match = MEDIA.fullmatch(name)
+    video = request.app.state.library.video(match[1]) if match else None
+    if video is None:
+        return JSONResponse({"detail": "no such song"}, status_code=404)
+    return FileResponse(video, media_type="video/mp4")
 
 
 @router.get("/api/health")

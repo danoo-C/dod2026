@@ -23,7 +23,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from dod.engine.effects.base import Context, Effect
+from dod.engine.effects.base import Audio, Context, Effect
 from dod.engine.effects.idle import Idle
 from dod.engine.output import HardwareFrame, OutputStage, PreviewFrame
 from dod.engine.picture import MATRIX_ROWS, Picture
@@ -63,13 +63,15 @@ class RenderLoop:
                  params: Mapping[str, Any] | None = None, fps: float = FPS,
                  clock: Callable[[], float] = time.monotonic,
                  on_preview: Callable[[PreviewFrame], None] | None = None,
-                 on_fallback: Callable[[str], None] | None = None) -> None:
+                 on_fallback: Callable[[str], None] | None = None,
+                 audio: Callable[[float], Audio | None] | None = None) -> None:
         self.display = display
         self.stage = stage
         self.period = 1.0 / fps
         self.clock = clock
         self.on_preview = on_preview
         self.on_fallback = on_fallback  # called with the broken effect's id when the loop falls back to idle
+        self.audio = audio  # the spectrum at a moment on this clock (dod.music.audio), for the music effect
         effect = effect or Idle()
         self.scene = Scene(effect, dict(params if params is not None else effect.defaults()), clock())
         self.ticks = 0
@@ -119,8 +121,9 @@ class RenderLoop:
         scene = self.scene
         n = self.display.led_count
         drawing = scene.drawing if scene.drawing is not None else bytes(MATRIX_ROWS)
+        audio = self.audio(now) if self.audio is not None else None
         picture = self._render(scene, Context(led_count=n, t=now - scene.started, dt=dt, params=scene.params,
-                                              drawing=drawing), n)
+                                              drawing=drawing, audio=audio), n)
         if scene.drawing is not None:
             picture = Picture(picture.leds, scene.drawing, picture.matrix_brightness or DRAWING_BRIGHTNESS)
         out = self.stage.apply(picture, now)

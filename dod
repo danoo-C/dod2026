@@ -9,6 +9,7 @@
 #   ./dod npm <args>                       any npm command, in a Node container, in src/frontend
 #   ./dod frontend-build                   build the frontend into src/frontend/dist (the backend serves it)
 #   ./dod schema                           write the WebSocket messages' JSON Schema and TypeScript types
+#   ./dod songs [id ...]                   download the songs from songs.txt missing from cache/
 #   ./dod shell                            a shell in the container
 #   ./dod hcl <tool> [args]                HCL tools: monitor, pattern, bench, repl (docs/hcl.md section 9)
 #
@@ -45,7 +46,7 @@ BACKEND_CMD=(sh -c 'python -c "from dod.main import settings_or_exit; settings_o
              --reload --reload-dir src/backend --reload-dir src/hcl --ws-max-size 65536)
 
 usage() {
-    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | shell | hcl <monitor|pattern|bench|repl> [args]" >&2
+    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | shell | hcl <monitor|pattern|bench|repl> [args]" >&2
     exit 1
 }
 
@@ -268,6 +269,12 @@ case "$1" in
         node_args
         ensure_node_modules
         exec docker run "${nargs[@]}" "$NODE_IMAGE" npm run --silent types
+        ;;
+    songs)
+        # into cache/ in the project (DOD_CACHE_DIR, /work/cache); needs the internet
+        shift
+        docker_args
+        exec docker run "${args[@]}" "$IMAGE" python -m dod.music.download "$@"
         ;;
     shell)
         docker_args

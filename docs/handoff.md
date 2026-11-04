@@ -9,7 +9,7 @@ note) and the design in [backend.md](backend.md).
 
 - **HCL stage 1:** done earlier (the board's code and the Windows bridge,
   stages 2 and 3, are not started).
-- **Backend: steps 0–7 and 9 of 10 done.** The backend runs against the
+- **Backend: steps 0–9 of 10 done.** The backend runs against the
   simulated board: phones can get a session, join the queue, take control,
   pick presets, change parameters and draw on the 8x8; the main screen can
   control and use the admin commands; every browser gets state, its own queue
@@ -26,8 +26,8 @@ note) and the design in [backend.md](backend.md).
   notebook's screen ("Spustiť", the terminal, QR codes, queue, preview,
   the admin panel on Ctrl+Alt+D; the video comes with step 7),
   `/internal/logging` the terminal alone.
-- **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 729
-  (~21 s, most of them the presets at every parameter extreme), frontend 166
+- **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 793
+  (~22 s, most of them the presets at every parameter extreme), frontend 166
   (~4 s, plus the type checks).
 - **Git:** `dod2026/` is its own repo (branch `main`, no remote yet).
 
@@ -41,16 +41,17 @@ note) and the design in [backend.md](backend.md).
 | 5 | state, sessions, queue | done |
 | 6 | API: messages, WebSocket hub, HTTP, JSON Schema | done |
 | 7 | the remaining presets, the 8x8 per preset | done |
-| 8 | music: downloads, player, spectrum → light | **waiting for you:** the song list |
+| 8 | music: downloads, player, spectrum → light | done (`./dod songs` for the rest of the list) |
 | 9 | the fake logs | done |
 | 10 | end to end + 30 min soak | after 7–9 |
 
 ## What to do next
 
-1. **Backend step 8 (music)** – recommended next, nothing blocks it any
-   more: the song list is in `src/backend/dod/music/songs.txt` (10 songs,
-   ids checked; change it freely, one link and a short title per line). The
-   8x8 question is decided too (tech-spec 5.3).
+1. **`./dod songs`** – download the rest of the list (one song,
+   `dQw4w9WgXcQ`, is in `cache/` already; ~30 MB and ~15 s each). The list is
+   `src/backend/dod/music/songs.txt`; change it freely. Then **frontend step
+   7** (the player and the spectrum on the main screen) – recommended next,
+   nothing blocks it.
 2. **Look at `./dod sim` in a Windows browser** (http://localhost:5173) –
    the hand checks of frontend steps 1 and 2, not done yet:
    - an edit to `src/frontend/src/screens/Phone.tsx` shows up without a reload
@@ -80,9 +81,8 @@ note) and the design in [backend.md](backend.md).
      in Edge, the tab's memory stays flat (Task Manager)
    For a phone, WSL's NAT mode needs a change on Windows first (frontend
    plan, step 1, "Built").
-3. **After backend step 8:** frontend step 7 (the player and the
-   spectrum on the main screen), then backend step 10 and frontend step 8
-   (end to end). Backend
+3. **After frontend step 7:** backend step 10 and frontend step 8 (end to
+   end). Backend
    step 10 and frontend step 8 (end to end) come after those. Until the
    answers come, the hand checks above are what's left. The hotspot's name
    and password are open too (for the Wi-Fi QR code; until then only the

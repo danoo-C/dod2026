@@ -183,7 +183,6 @@ Started on app startup, all asyncio:
 | render loop | ticks at 30 fps, asks the active mode for a strip frame and an 8x8 frame, applies the power and flash limits, hands the frame to the HCL with `submit()` |
 | HCL events | forwards the HCL's events (board connected, rebooted, its log messages) to the log generator and the status badge |
 | log generator | builds log lines from real events and templates (section 4.5) and sends them to the logging page |
-| downloader | downloads songs with yt-dlp in a thread, one at a time |
 
 ### 4.3 Modes
 
@@ -359,9 +358,11 @@ audio, so there is nothing to compute an FFT from. Instead:
 1. The songs are a fixed list in `src/backend/dod/music/songs.txt` (one YouTube
    link per line, optional title). There is no free link entry.
 2. `./dod songs` downloads every song on the list that is not in `cache/`
-   yet, with yt-dlp (max length ~7 min each). This is done in advance; the
-   backend also fills in missing songs in the background on startup, if it
-   has internet.
+   yet, with yt-dlp (max length ~7 min each). This is done in advance, and
+   `cache/` goes to the notebook with the project; the running backend never
+   downloads (decided in backend plan step 8: on the day no download competes
+   with the show for the network, and a yt-dlp failure can't surface
+   mid-show).
 3. The visitor whose turn it is picks a song on their phone. The phone is
    only a remote: the fake loading screen runs on both the phone and the
    main screen.
@@ -571,7 +572,7 @@ One Dockerfile, two stages:
 
 1. `node:22-slim`: `npm ci` and `npm run build` in `src/frontend/` → `dist/`
 2. `python:3.13-slim`: the backend's packages, the `hcl` package
-   (`pip install src/hcl`), ffmpeg, deno, `mpremote` and `esptool`, the
+   (`pip install src/hcl`), ffmpeg, yt-dlp with deno, `mpremote` and `esptool`, the
    backend code, and the frontend's `dist/` from stage 1
 
 The final image is what runs on the notebook. In development the same image
