@@ -1,0 +1,19 @@
+# The songs on the stand (tech-spec 5.2; backend plan step 8).
+# One YouTube link per line, then the short title the phone shows (YouTube's
+# own titles are too long). Lines starting with # are left out.
+# `./dod songs` downloads the ones missing from cache/ (max ~7 min each).
+#
+# Picked for a corridor of 15-year-olds: songs everyone knows, with a beat the
+# lights can follow. Every id checked on 2026-11-04 against YouTube's oEmbed:
+# it is the official video, on the artist's or the label's channel.
+
+https://www.youtube.com/watch?v=y6120QOlsfU  Darude – Sandstorm
+https://www.youtube.com/watch?v=dQw4w9WgXcQ  Never Gonna Give You Up
+https://www.youtube.com/watch?v=wD0Mm6WIcYs  L'Amour Toujours
+https://www.youtube.com/watch?v=68ugkg9RePc  Blue (Da Ba Dee)
+https://www.youtube.com/watch?v=djV11Xbc914  a-ha – Take On Me
+https://www.youtube.com/watch?v=HgzGwKwLmgM  Queen – Don't Stop Me Now
+https://www.youtube.com/watch?v=9bZkp7q19f0  Gangnam Style
+https://www.youtube.com/watch?v=HEXWRTEbj1I  Haddaway – What Is Love
+https://www.youtube.com/watch?v=k85mRPqvMbE  Crazy Frog – Axel F
+https://www.youtube.com/watch?v=FGBhQbmPwH8  Daft Punk – One More Time

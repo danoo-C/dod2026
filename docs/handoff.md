@@ -47,10 +47,10 @@ note) and the design in [backend.md](backend.md).
 
 ## What to do next
 
-1. **The song list**, so backend step 8 (music) isn't blocked: YouTube
-   links, each with a short title for the phone (YouTube's own titles are too
-   long). Max ~7 min per song. (The 8x8 question is decided: an animated
-   icon per preset, the drawing over it – tech-spec 5.3.)
+1. **Backend step 8 (music)** – recommended next, nothing blocks it any
+   more: the song list is in `src/backend/dod/music/songs.txt` (10 songs,
+   ids checked; change it freely, one link and a short title per line). The
+   8x8 question is decided too (tech-spec 5.3).
 2. **Look at `./dod sim` in a Windows browser** (http://localhost:5173) –
    the hand checks of frontend steps 1 and 2, not done yet:
    - an edit to `src/frontend/src/screens/Phone.tsx` shows up without a reload
@@ -80,8 +80,9 @@ note) and the design in [backend.md](backend.md).
      in Edge, the tab's memory stays flat (Task Manager)
    For a phone, WSL's NAT mode needs a change on Windows first (frontend
    plan, step 1, "Built").
-3. **Everything left waits for the song list.** Backend step 8 needs it,
-   and frontend step 7 (the player and the spectrum) needs backend step 8. Backend
+3. **After backend step 8:** frontend step 7 (the player and the
+   spectrum on the main screen), then backend step 10 and frontend step 8
+   (end to end). Backend
    step 10 and frontend step 8 (end to end) come after those. Until the
    answers come, the hand checks above are what's left. The hotspot's name
    and password are open too (for the Wi-Fi QR code; until then only the

@@ -28,7 +28,7 @@ protocol from backend.md 9. The frontend's plan starts from there.
 | What | Needed by |
 |---|---|
 | ~~what the 8x8 shows in manual mode (tech-spec 5.3)~~ decided in step 7 | step 7 |
-| the song list: YouTube links of the songs for the stand, with a short title each | step 8 |
+| ~~the song list~~ picked: `dod/music/songs.txt`, 10 songs, ids checked (2026-11-04) | step 8 |
 
 ## Scope
 
@@ -450,7 +450,9 @@ Built:
 
 ### Step 8. Music (backend.md 6, 7.4; tech-spec 5.2)
 
-Needs: the song list, from you.
+Needs: the song list – picked, in `dod/music/songs.txt` (10 songs; each id
+checked against YouTube's oEmbed: the official video, on the artist's or
+the label's channel).
 
 Files: `dod/music/songs.txt`, `library.py`, `download.py`, `audio.py`,
 `player.py`, `dod/engine/effects/music.py`; `/media/<id>.mp4` in `http.py`
