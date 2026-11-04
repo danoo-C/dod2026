@@ -93,7 +93,7 @@ def test_status_over_http_and_30_fps():
         assert 29 <= status["render"]["fps"] <= 31
         assert status["render"]["effect"] == "idle" and status["render"]["led_count"] == 10
         assert status["render"]["mode"] == "idle"
-        assert sorted(status["tasks"]["running"]) == ["hcl events", "queue clock", "render loop", "state broadcaster", "status poller"]
+        assert sorted(status["tasks"]["running"]) == ["hcl events", "log generator", "queue clock", "render loop", "state broadcaster", "status poller"]
 
 
 @run

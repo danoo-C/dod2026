@@ -644,17 +644,26 @@ Design of the content is in tech-spec 4.5. Inside the backend:
 - the generator listens to the bus and turns real events into lines (`queue
   INFO session 7f3a… acquired control (2 waiting)`), and fills the gaps with
   templates (`photon-bus WARN coherence drift 0.03%`)
-- real numbers come from the hardware status (frames, bytes, fps) and the
-  engine (current preset, beat)
-- `LoadingStarted` and `SongStarted` start a burst (30–50 lines in 1–2 s);
-  at most one burst every 3 s for the whole stand, so a phone can't keep the
-  terminal bursting by sending `loading_started` over and over
+- real numbers come from the hardware status (bytes, fps, round trip) and the
+  engine (the render loop's frame counter, the last frame for hex dumps,
+  current preset, beat – the beat from step 8 on)
+- calm: 3–8 filler lines every second, spread out over it
+- a parameter or the drawing gives at most one line per 0.5 s, with the
+  latest value: a dragged slider sends 20 changes a second
+- `LoadingStarted` and `SongStarted` start a burst (30–50 lines in 1–2 s),
+  and the filler pauses meanwhile; at most one burst every 3 s for the whole
+  stand, so a phone can't keep the terminal bursting by sending
+  `loading_started` over and over. A trigger in between is dropped, not saved
 - the last 300 lines are kept, so a logging page that connects (or reloads)
-  starts with a full screen
+  starts with a full screen: the hub sends them right after `you`, before any
+  new line
 - lines are sent in batches (`{"type": "log", "lines": [...]}`), at most ~20
   batches a second, only to `main` and `logging`
 - a line is structured, the page does the colours:
-  `{"t": 1793710972.481, "tag": "rgb-core", "level": "INFO", "text": "frame 008412 committed"}`
+  `{"t": 1793710972.481, "tag": "rgb-core", "level": "INFO", "text": "frame 008412 committed"}`.
+  The levels are the page's four colours: `DEBUG`, `INFO`, `OK`, `WARN`. A
+  board's own `ERROR` shows as `WARN` (it is in the real log too); its text is
+  cut to one line of at most 120 characters
 
 Real errors never go to the fake terminal (tech-spec 4.5): they go to the
 Python log (`docker logs`) and to the status badge.

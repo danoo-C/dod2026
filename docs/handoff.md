@@ -8,16 +8,16 @@ Details are in [plans/backend.md](plans/backend.md) (each finished step has a
 
 - **HCL stage 1:** done earlier (the board's code and the Windows bridge,
   stages 2 and 3, are not started).
-- **Backend: steps 0–6 of 10 done.** The backend runs against the simulated
-  board: phones can get a session, join the queue, take control, pick
-  presets, change parameters and draw on the 8x8; the main screen can control
-  and use the admin commands; every browser gets state, its own queue
-  position and live previews over the WebSocket.
-- **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 388
-  (~16 s). The last three full runs were all green.
-- **Nothing is committed.** `dod2026/` is still untracked in the
-  `~/spseke` repo (`git status` shows `?? ./`). Decide whether to commit
-  before going on.
+- **Backend: steps 0–6 and 9 of 10 done.** The backend runs against the
+  simulated board: phones can get a session, join the queue, take control,
+  pick presets, change parameters and draw on the 8x8; the main screen can
+  control and use the admin commands; every browser gets state, its own queue
+  position and live previews over the WebSocket; `main` and `logging` get the
+  fake logs, starting with the last 300 lines.
+- **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 414
+  (~19 s). The last three full runs were all green.
+- **Git:** `dod2026/` is its own repo now (branch `main`, one initial
+  commit plus step 9, no remote yet).
 
 | Step | What | State |
 |---|---|---|
@@ -30,7 +30,7 @@ Details are in [plans/backend.md](plans/backend.md) (each finished step has a
 | 6 | API: messages, WebSocket hub, HTTP, JSON Schema | done |
 | 7 | the remaining presets | **waiting for you:** what the 8x8 shows in manual mode |
 | 8 | music: downloads, player, spectrum → light | **waiting for you:** the song list |
-| 9 | the fake logs | ready to build, needs nothing |
+| 9 | the fake logs | done |
 | 10 | end to end + 30 min soak | after 7–9 |
 
 ## What to do next
@@ -41,8 +41,7 @@ Details are in [plans/backend.md](plans/backend.md) (each finished step has a
      works; solid and rainbow show placeholders (a frame, moving stripes).
    - **the song list:** YouTube links, each with a short title for the phone
      (YouTube's own titles are too long). Max ~7 min per song.
-2. **Build step 9 (fake logs)** – recommended next, it needs no input.
-3. **Write the frontend plan.** The WebSocket protocol and its schema
+2. **Write the frontend plan** – recommended next, it needs no input. The WebSocket protocol and its schema
    (`src/backend/schema/messages.json`) exist since step 6, so the frontend can
    start in parallel with steps 7–10. There is no `docs/plans/frontend.md`
    yet; `docs/preview.html` is the clickable mockup to start from.
@@ -83,15 +82,12 @@ cd ~/spseke/dod2026
 - `/media/<id>.mp4` doesn't exist yet; its rules are in backend.md 9 (id
   check against the list before touching the file system, range requests).
 
-**Step 9 (logs)**
+**Step 8 and the logs** (step 9 is built)
 
-- `hub.send_log(lines)` sends a batch to `main` and `logging` only (tested).
-- **Not built yet:** the last 300 lines for a page that connects – the hub
-  needs a hook that sends the history right after `welcome`.
-- Real events are on the bus (`dod/bus.py`); a listener on its own clock
-  uses `Subscription.take_all()`. `HardwareStatus` has `frames_sent` and
-  `bytes_tx` for the "real numbers".
-- Bursts: at most one every 3 s for the whole stand (backend.md 10).
+- `SongStarted` already starts a burst and writes `stream open: …`.
+- `Facts.beat` in `dod/logs/templates.py` is `None`, so the `fft` line
+  (`32 bins ok, peak 112 Hz, beat=1`) never shows; the music effect should
+  hand its beat to `log_facts()` in `dod/main.py`.
 
 **Step 7 (presets)**
 
@@ -118,7 +114,8 @@ cd ~/spseke/dod2026
 ## Loose ends worth knowing
 
 - **HCL suite takes ~23 s** – close to the 30 s budget in its plan. The
-  backend suite is separate (~16 s); step 10 wants it under 30 s too.
+  backend suite is separate (~19 s, ~3.5 s of it the log tests); step 10
+  wants it under 30 s too.
 - When the board's LED count changes, the flash limiter starts its count over,
   so across that one moment up to 12 transitions could fall into one second.
   Rare (a different board plugged in); not documented in backend.md yet.

@@ -258,6 +258,7 @@
     },
     "LogLine": {
       "additionalProperties": false,
+      "description": "One line of the fake terminal (docs/backend.md 10); the page does the colours.",
       "properties": {
         "t": {
           "title": "T",
@@ -268,6 +269,12 @@
           "type": "string"
         },
         "level": {
+          "enum": [
+            "DEBUG",
+            "INFO",
+            "OK",
+            "WARN"
+          ],
           "title": "Level",
           "type": "string"
         },

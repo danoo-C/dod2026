@@ -464,13 +464,47 @@ Files: `dod/logs/generator.py`, `dod/logs/templates.py`
 
 Done when:
 
-- [ ] with a fixed seed and a fake clock: calm rate 3–8 lines / s, bursts 30–50
+- [x] with a fixed seed and a fake clock: calm rate 3–8 lines / s, bursts 30–50
   lines in ≤ 2 s; `loading_started` sent 10 times a second still gives one
   burst per 3 s
-- [ ] every template fills in without errors; real events show up within a
+- [x] every template fills in without errors; real events show up within a
   second
-- [ ] a logging page that connects gets the last 300 lines first
-- [ ] phones never get `log` messages
+- [x] a logging page that connects gets the last 300 lines first
+- [x] phones never get `log` messages
+
+Built:
+
+- `dod/logs/templates.py`: what the lines say. `event_lines()` for every bus
+  event (`BoardText` and `BoardIncompatible` stay out: they are real
+  problems), 30 filler templates (8 with real numbers, the rest made up),
+  `burst()` (a header, modules loading, progress bars, self-tests, "ready").
+  `Facts`: the real numbers, read 20 times a second.
+- `dod/logs/generator.py`: `LogGenerator` – when lines are written.
+  `step(now)` does one moment without waiting, so the tests drive it with a
+  fake clock and a fixed seed; the `log generator` task calls it every 50 ms
+  (≤ 20 batches a second). Filler: every second 3–8 lines, one in each equal
+  slice of it; it pauses during a burst; a stalled process doesn't catch up.
+  Bursts: 1.0–1.8 s, at most one every 3 s, a trigger in between is dropped.
+  The last 300 lines in `history()`.
+- the hub: `Hub(..., log_history=)` sends the history right after `you`, to
+  `main` and `logging` only, before any new line.
+- `dod/main.py`: the generator subscribes right after the bus is created, so
+  the board's first `BoardConnected` makes it in; `log_facts()` reads the
+  numbers (the render loop's frame counter, bytes sent, both fps, round trip,
+  the last frame for hex dumps, mode, preset, connections, queue length).
+- decided while building (backend.md 10 updated): the levels are `DEBUG`,
+  `INFO`, `OK`, `WARN` (a `Literal` in `LogLine`, so the schema has them; a
+  board's `ERROR` shows as `WARN`); a parameter or the drawing gives at most
+  one line per 0.5 s, with the latest value (a dragged slider sends 20 a
+  second); board text is cut to one line of ≤ 120 characters; `Facts.beat`
+  is `None` until step 8, and the `fft` line waits for it.
+- checked by hand against `./dod backend` with a real WebSocket client: a
+  logging page gets welcome → state → you → log (history), 142–159 lines in
+  8 s with a burst, a phone joining shows up as `enqueued` and `acquired
+  control` at once, `loading_started` from the phone starts a burst, the phone
+  gets no `log`.
+- 414 backend tests, ~19 s (was ~16 s; the new ones take ~3.5 s, half of it
+  waiting for the running app's lines); three full runs in a row green.
 
 ### Step 10. End to end and soak
 

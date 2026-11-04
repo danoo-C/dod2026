@@ -26,6 +26,8 @@ from dod.engine.effects.idle import Idle
 from dod.engine.effects.rainbow import Rainbow
 from dod.engine.loop import RenderLoop
 from dod.engine.output import OutputStage
+from dod.logs.generator import LogGenerator
+from dod.logs.templates import Facts
 from dod.settings import Settings, SettingsError
 from dod.state import State
 from dod.tasks import Supervisor
@@ -57,6 +59,10 @@ def create_app(settings: Settings | None = None, *, link: Any = None,
         # 1.-2. the parts that don't need anything else
         bus = Bus()
         state = State(settings, bus)
+        # the fake logs listen from the start, so the board's first events make it in;
+        # hub, hw and loop are created below, before the generator's task runs
+        logs = LogGenerator(bus, send=lambda lines: hub.send_log(lines),
+                            facts=lambda: log_facts(hw, loop, state, hub))
         # 3. the hardware: connecting runs in the background, nothing waits for it
         hw = hardware.Hardware(link if link is not None else hardware.open_link(settings), bus,
                                fallback_led_count=settings.led_count,
@@ -65,7 +71,7 @@ def create_app(settings: Settings | None = None, *, link: Any = None,
         state.set_hardware(hw.status.for_pages())
         await hw.start()
         # the browsers' hub, so the engine can send it previews
-        hub = Hub(state, bus, settings, songs=app.state.songs)
+        hub = Hub(state, bus, settings, songs=app.state.songs, log_history=logs.history)
         state.on_change(hub.state_changed)
         # 4. the engine, following the state
         stage = OutputStage(brightness=settings.brightness, power_limit_ma=settings.power_limit_ma)
@@ -78,7 +84,9 @@ def create_app(settings: Settings | None = None, *, link: Any = None,
         tasks.start("status poller", hw.poll_status)
         tasks.start("queue clock", lambda: queue_clock(state))
         tasks.start("state broadcaster", hub.run)
+        tasks.start("log generator", logs.run)
         app.state.bus, app.state.state, app.state.hardware = bus, state, hw
+        app.state.logs = logs
         app.state.loop, app.state.tasks, app.state.hub = loop, tasks, hub
         # 6. where the internal pages are
         log.info("main screen:  %s/internal/main?key=%s", settings.public_url, settings.internal_key)
@@ -106,6 +114,16 @@ async def queue_clock(state: State) -> None:
     while True:
         state.tick()
         await asyncio.sleep(QUEUE_CLOCK_SECONDS)
+
+
+def log_facts(hw: hardware.Hardware, loop: RenderLoop, state: State, hub: Hub) -> Facts:
+    """The real numbers for the fake logs (docs/backend.md 10)."""
+    status, out = hw.status, loop.last_output
+    frame = b"" if out is None else bytes(c for led in out.hardware.leds for c in led) + out.hardware.matrix
+    return Facts(frame_no=loop.ticks, bytes_tx=status.bytes_tx, link_fps=status.fps,
+                 render_fps=loop.fps, rtt_ms=status.rtt_ms, led_count=status.led_count, mode=state.mode,
+                 preset=state.preset, connections=len(hub.connections), waiting=len(state.queue.waiting),
+                 frame=frame)
 
 
 class SceneSync:

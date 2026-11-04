@@ -22,6 +22,7 @@ Band = Annotated[float, Field(ge=0, le=1)]
 ROLES = ("phone", "main", "logging")
 Role = Literal["phone", "main", "logging"]
 ErrorCode = Literal["invalid", "forbidden", "not_your_turn", "no_player", "unknown_song", "rate_limited"]
+LogLevel = Literal["DEBUG", "INFO", "OK", "WARN"]  # the fake terminal's colours; real errors never go there
 
 
 class _In(BaseModel):
@@ -201,9 +202,11 @@ class Preview(_Out):
 
 
 class LogLine(_Out):
-    t: float
-    tag: str
-    level: str
+    """One line of the fake terminal (docs/backend.md 10); the page does the colours."""
+
+    t: float  # wall clock, seconds
+    tag: str  # the made-up subsystem: rgb-core, photon-bus, esp32, …
+    level: LogLevel
     text: str
 
 

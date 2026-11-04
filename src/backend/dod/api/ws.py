@@ -42,6 +42,7 @@ STATE_INTERVAL = 0.05  # at most 20 state messages a second
 OUT_QUEUE = 64  # messages waiting for one browser before the oldest is dropped
 PHONE_RATE = 20.0  # commands a second from one phone (a slider being dragged)
 PHONE_BURST = 20
+LOG_ROLES = ("main", "logging")  # phones never get the log stream: it would use up the hotspot
 
 CLOSE_REPLACED = 4001  # a newer main screen took over
 CLOSE_BAD_ROLE = 4400
@@ -130,8 +131,10 @@ class Hub:
                  songs: Callable[[], Iterable[m.SongInfo]] = lambda: [],
                  play_song: PlaySong | None = None,
                  on_spectrum: OnSpectrum | None = None,
-                 on_player: OnPlayer | None = None) -> None:
+                 on_player: OnPlayer | None = None,
+                 log_history: Callable[[], list[m.LogLine]] | None = None) -> None:
         self._state = state
+        self._log_history = log_history  # the last lines, for a main or logging page that connects
         self._bus = bus
         self._settings = settings
         self._songs = songs
@@ -187,8 +190,15 @@ class Hub:
         """A batch of log lines to the main screen and the logging pages; phones never get them."""
         text = m.Log(lines=lines).model_dump_json()
         for conn in list(self.connections):
-            if conn.role in ("main", "logging"):
+            if conn.role in LOG_ROLES:
                 conn.send(text)
+
+    def _send_log_history(self, conn: Connection) -> None:
+        if conn.role not in LOG_ROLES or self._log_history is None:
+            return
+        lines = self._log_history()
+        if lines:
+            conn.send(m.Log(lines=lines).model_dump_json())
 
     # --- one browser
 
@@ -216,6 +226,7 @@ class Hub:
             conn.send(self._welcome(conn))
             conn.send(self._state_text())
             self._send_you(conn)
+            self._send_log_history(conn)  # before any new line: nothing awaited since _register
             while True:
                 message = await ws.receive()
                 if message["type"] == "websocket.disconnect":
