@@ -15,8 +15,8 @@ note) and the design in [backend.md](backend.md).
   control and use the admin commands; every browser gets state, its own queue
   position and live previews over the WebSocket; `main` and `logging` get the
   fake logs, starting with the last 300 lines.
-- **Frontend: steps 1–6 of 8 done** (tooling, the connection, the shared
-  components, the logging page, the phone, the main screen). React + Vite in `src/frontend/`, `./dod sim` runs the backend
+- **Frontend: steps 1–7 of 8 done** (tooling, the connection, the shared
+  components, the logging page, the phone, the main screen, the player). React + Vite in `src/frontend/`, `./dod sim` runs the backend
   and Vite together on http://localhost:5173. Every screen connects with its
   role and reconnects by itself; the components (preview, terminal, loading
   screen, QR, countdown, badge, toast) have the mockup's look, and
@@ -24,11 +24,12 @@ note) and the design in [backend.md](backend.md).
   All three screens are real: `/` the phone (queue, loading, presets and
   their parameters, drawing, songs, time's up), `/internal/main` the
   notebook's screen ("Spustiť", the terminal, QR codes, queue, preview,
-  the admin panel on Ctrl+Alt+D; the video comes with step 7),
+  the admin panel on Ctrl+Alt+D, and the player: the song's video, its
+  spectrum driving the lights),
   `/internal/logging` the terminal alone.
 - **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 793
-  (~22 s, most of them the presets at every parameter extreme), frontend 166
-  (~4 s, plus the type checks).
+  (~22 s, most of them the presets at every parameter extreme), frontend 188
+  (~4.5 s, plus the type checks).
 - **Git:** `dod2026/` is its own repo (branch `main`, no remote yet).
 
 | Step | What | State |
@@ -49,9 +50,12 @@ note) and the design in [backend.md](backend.md).
 
 1. **`./dod songs`** – download the rest of the list (one song,
    `dQw4w9WgXcQ`, is in `cache/` already; ~30 MB and ~15 s each). The list is
-   `src/backend/dod/music/songs.txt`; change it freely. Then **frontend step
-   7** (the player and the spectrum on the main screen) – recommended next,
-   nothing blocks it.
+   `src/backend/dod/music/songs.txt`; change it freely.
+   **Try the music** with `./dod sim`: the main screen
+   (http://localhost:5173/internal/main?key=dev, "Spustiť") and a phone window
+   (http://localhost:5173) that joins and picks "Never Gonna Give You Up" on
+   the Hudba tab: the video plays with sound on the main screen, the preview
+   follows the music, and after the song the stand goes back to the preset.
 2. **Look at `./dod sim` in a Windows browser** (http://localhost:5173) –
    the hand checks of frontend steps 1 and 2, not done yet:
    - an edit to `src/frontend/src/screens/Phone.tsx` shows up without a reload
@@ -81,8 +85,8 @@ note) and the design in [backend.md](backend.md).
      in Edge, the tab's memory stays flat (Task Manager)
    For a phone, WSL's NAT mode needs a change on Windows first (frontend
    plan, step 1, "Built").
-3. **After frontend step 7:** backend step 10 and frontend step 8 (end to
-   end). Backend
+3. **What's left: backend step 10 and frontend step 8** (end to end and the
+   30-minute soak) – recommended next after the music is tried by hand. Backend
    step 10 and frontend step 8 (end to end) come after those. Until the
    answers come, the hand checks above are what's left. The hotspot's name
    and password are open too (for the Wi-Fi QR code; until then only the

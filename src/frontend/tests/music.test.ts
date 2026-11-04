@@ -1,0 +1,119 @@
+// The spectrum and the beat on the main screen (plan step 7), from synthetic
+// analyser data.
+import { describe, expect, it } from "vitest";
+
+import { BeatDetector, GAP } from "../src/apps/Music/beat";
+import { AutoGain, BANDS, bandEdges, HIGH_HZ, LOW_HZ, toBands } from "../src/apps/Music/spectrum";
+
+const RATE = 48000;
+const FFT = 2048;
+const BIN_HZ = RATE / FFT; // 23.4 Hz
+
+describe("bandEdges", () => {
+  const edges = bandEdges(RATE, FFT);
+
+  it("32 bands from 40 Hz to 16 kHz, in order, each at least one bin, none overlapping", () => {
+    expect(edges).toHaveLength(BANDS);
+    expect(edges[0]?.[0]).toBe(Math.floor(LOW_HZ / BIN_HZ));
+    expect((edges.at(-1)?.[1] ?? 0) * BIN_HZ).toBeCloseTo(HIGH_HZ, -3);
+    for (let i = 0; i < edges.length; i++) {
+      const [first, last] = edges[i] ?? [0, 0];
+      expect(last).toBeGreaterThanOrEqual(first);
+      if (i > 0) expect(first).toBe((edges[i - 1]?.[1] ?? 0) + 1);
+    }
+  });
+
+  it("logarithmic: the bass gets narrow bands, the treble wide ones", () => {
+    const width = (i: number) => (edges[i]?.[1] ?? 0) - (edges[i]?.[0] ?? 0) + 1;
+    expect(width(0)).toBe(1);
+    expect(width(31)).toBeGreaterThan(50);
+  });
+
+  it("44.1 kHz too (a different sound card)", () => {
+    expect(bandEdges(44100, FFT)).toHaveLength(BANDS);
+  });
+});
+
+describe("toBands", () => {
+  const edges = bandEdges(RATE, FFT);
+
+  it("a known spectrum gives the expected bands", () => {
+    const bins = new Uint8Array(FFT / 2);
+    const at = (hz: number) => Math.round(hz / BIN_HZ);
+    bins[at(60)] = 255; // a bass note
+    for (let b = at(3000); b < at(7000); b++) bins[b] = 128; // a hiss, wider than the band around 4.5 kHz
+    const bands = toBands(bins, edges);
+    expect(bands).toHaveLength(32);
+    const loudest = bands.indexOf(Math.max(...bands));
+    expect(loudest).toBeLessThan(5); // the bass is in the first bands
+    const hiss = edges.findIndex(([f, l]) => f <= at(4500) && at(4500) <= l);
+    expect(bands[hiss]).toBeCloseTo(128 / 255, 1);
+    expect(bands[BANDS - 1]).toBe(0); // nothing up at 16 kHz
+    expect(bands.every((b) => b >= 0 && b <= 1)).toBe(true);
+  });
+
+  it("silence is all 0, full scale all 1", () => {
+    expect(toBands(new Uint8Array(FFT / 2), edges).every((b) => b === 0)).toBe(true);
+    expect(toBands(new Uint8Array(FFT / 2).fill(255), edges).every((b) => b === 1)).toBe(true);
+  });
+});
+
+describe("AutoGain", () => {
+  it("a quiet song moves the lights as much as a loud one", () => {
+    const quiet = new AutoGain();
+    let out: number[] = [];
+    for (let i = 0; i < 300; i++) out = quiet.apply([0.3, 0.15, 0.05]);
+    expect(out[0]).toBeCloseTo(1);
+    expect(out[1]).toBeCloseTo(0.5);
+  });
+
+  it("follows a louder moment at once and lets go slowly", () => {
+    const g = new AutoGain();
+    g.apply([0.3]);
+    expect(g.apply([0.9])[0]).toBe(1);
+    expect(g.apply([0.3])[0]).toBeLessThan(0.35); // the peak is still 0.9
+  });
+
+  it("silence isn't blown up into noise", () => {
+    const g = new AutoGain();
+    let out: number[] = [];
+    for (let i = 0; i < 2000; i++) out = g.apply([0.01, 0.0]);
+    expect(out[0]).toBeLessThan(0.1);
+  });
+});
+
+describe("BeatDetector", () => {
+  const frames = (seconds: number) => Array.from({ length: Math.round(seconds * 30) }, (_, i) => i / 30);
+  const bands = (low: number) => [low, low, low, low, ...Array<number>(28).fill(0.3)];
+
+  it("finds the beats of a 120 BPM kick", () => {
+    const d = new BeatDetector();
+    const beats = frames(10).filter((t) => {
+      const kick = t % 0.5 < 0.07; // 2 kicks a second, ~2 frames each
+      return d.push(bands(kick ? 0.9 : 0.25), t);
+    });
+    expect(beats.length).toBeGreaterThanOrEqual(18); // ~20 in 10 s
+    expect(beats.length).toBeLessThanOrEqual(21);
+    for (let i = 1; i < beats.length; i++) expect((beats[i] ?? 0) - (beats[i - 1] ?? 0)).toBeGreaterThanOrEqual(GAP);
+  });
+
+  it("finds none in white noise", () => {
+    // white noise is flat; after the analyser's smoothing its bands only wobble a little
+    let seed = 1;
+    const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+    const d = new BeatDetector();
+    const beats = frames(20).filter((t) => d.push(Array.from({ length: 32 }, () => 0.5 + (random() - 0.5) * 0.1), t));
+    expect(beats).toEqual([]);
+  });
+
+  it("finds none in silence", () => {
+    const d = new BeatDetector();
+    expect(frames(5).filter((t) => d.push(bands(0.0), t))).toEqual([]);
+  });
+
+  it("never more often than every 0.3 s, even with a kick every frame", () => {
+    const d = new BeatDetector();
+    const beats = frames(3).filter((t, i) => d.push(bands(i % 2 === 0 ? 1.0 : 0.05), t));
+    for (let i = 1; i < beats.length; i++) expect((beats[i] ?? 0) - (beats[i - 1] ?? 0)).toBeGreaterThanOrEqual(GAP);
+  });
+});

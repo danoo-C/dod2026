@@ -56,6 +56,21 @@ afterEach(() => {
 });
 
 describe("Spustiť", () => {
+  it("starts the audio in the click itself, where the browser allows sound", () => {
+    const resume = vi.fn(async () => {});
+    class FakeAudioContext {
+      sampleRate = 48000;
+      resume = resume;
+    }
+    vi.stubGlobal("AudioContext", FakeAudioContext);
+    vi.spyOn(console, "warn").mockImplementation(() => {}); // later songs in this file get no graph from the fake
+    window.history.replaceState(null, "", "/internal/main?key=dev");
+    show();
+    expect(resume).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Spustiť" }));
+    expect(resume).toHaveBeenCalledOnce();
+  });
+
   it("the main screen connects only after the click: until then it isn't the player", async () => {
     window.history.replaceState(null, "", "/internal/main?key=dev");
     show();
@@ -73,7 +88,7 @@ describe("the right part", () => {
   it("no song: the big QR codes, the queue and the large preview", async () => {
     await start(MAIN, stateAt(NOW, { controller: "7f3a", waiting: 3 }));
     expect(screen.getByTestId("attract")).toBeTruthy();
-    expect(screen.queryByTestId("video")).toBeNull();
+    expect(screen.getByTestId("video").hidden).toBe(true); // in the page (the <video> stays), hidden
     expect(screen.getByText("Naskenuj kód a ovládaj svetlá")).toBeTruthy();
     expect(screen.getByText("V rade čaká 3 ľudia.")).toBeTruthy();
     expect(qrLabels()).toEqual(["1. Wi-Fi", "2. Stránka"]); // big ones only: the bar has none
@@ -83,6 +98,7 @@ describe("the right part", () => {
   it("a song: the video, and the bar gets the small QR codes", async () => {
     await start(MAIN, music());
     expect(screen.getByTestId("video").textContent).toContain("Never Gonna Give You Up");
+    expect(screen.getByTestId("video").hidden).toBe(false);
     expect(screen.queryByTestId("attract")).toBeNull();
     expect(qrLabels()).toEqual(["1. Wi-Fi", "2. Stránka"]);
     expect(document.querySelector(".bar .qrs")).not.toBeNull();
@@ -93,7 +109,7 @@ describe("the right part", () => {
     act(() => FakeWebSocket.last.receive(stateAt(NOW)));
     expect(screen.getByTestId("attract")).toBeTruthy();
     act(() => FakeWebSocket.last.receive(music()));
-    expect(screen.getByTestId("video")).toBeTruthy();
+    expect(screen.getByTestId("video").hidden).toBe(false);
   });
 
   it("without the Wi-Fi settings: only the page's QR code", async () => {

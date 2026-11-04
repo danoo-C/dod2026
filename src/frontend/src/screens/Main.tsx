@@ -1,7 +1,7 @@
 // /internal/main, the notebook's screen (tech-spec 5.1; plan step 6):
 //
 //   ┌ terminal ┬──────────── right part ─────────────┐
-//   │ (25-33 %)│ a song: its video (step 7)          │
+//   │ (25-33 %)│ a song: its video (Player)          │
 //   │          │ otherwise: big QR codes, the queue, │
 //   │          │ the large preview                   │
 //   │          ├──────────── info bar ───────────────┤
@@ -14,6 +14,8 @@ import { useCallback, useState, type CSSProperties, type ReactNode } from "react
 
 import { useServerClock, useStand } from "../api/useStand";
 import { AdminPanel, TERM_MAX, TERM_MIN, useAdminShortcut } from "../components/AdminPanel";
+import { primeAudio } from "../apps/Music/audioGraph";
+import { Player } from "../apps/Music/Player";
 import { LiveBadge } from "../components/Badge";
 import { useTick } from "../components/Countdown";
 import { LivePreview } from "../components/Preview";
@@ -35,7 +37,15 @@ export function StartGate({ children }: { children: ReactNode }) {
     <div className="start">
       <h1>DOD 2026 · Svetelná show</h1>
       <p>Klikni raz, aby prehliadač dovolil zvuk. Potom sa obrazovka pripojí k stánku.</p>
-      <button type="button" className="start-btn" autoFocus onClick={() => setStarted(true)}>
+      <button
+        type="button"
+        className="start-btn"
+        autoFocus
+        onClick={() => {
+          primeAudio(); // in the click itself: the browser allows sound now
+          setStarted(true);
+        }}
+      >
         Spustiť
       </button>
     </div>
@@ -78,7 +88,8 @@ export function Main() {
     <div className="nb" style={{ "--term-w": `${termWidth}%` } as CSSProperties}>
       <LiveTerminal />
       <div className="stage">
-        {music ? <Video /> : <Attract />}
+        <Player visible={music} />
+        {!music && <Attract />}
         <InfoBar qr={music} />
       </div>
       {admin && <AdminPanel onClose={close} termWidth={termWidth} setTermWidth={setTermWidth} />}
@@ -88,20 +99,6 @@ export function Main() {
 }
 
 // --- the right part -----------------------------------------------------------
-
-/** The song's video. Until step 7 plays it, its title over a placeholder. */
-function Video() {
-  const title = useStand((s) => s.state?.music.title ?? s.state?.music.song ?? "");
-  return (
-    <div className="video" data-testid="video">
-      <div className="video-meta">
-        <span className="chip">VIDEO</span>
-        <h2>{title}</h2>
-        <p>Prehrávač príde s hudbou (plán, krok 7).</p>
-      </div>
-    </div>
-  );
-}
 
 function QrCodes({ size }: { size: number | string }) {
   const url = useStand((s) => s.welcome?.public_url ?? null);

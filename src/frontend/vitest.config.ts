@@ -10,6 +10,7 @@ export default mergeConfig(
       environment: "jsdom",
       include: ["tests/**/*.test.{ts,tsx}"],
       restoreMocks: true,
+      setupFiles: ["tests/setup.ts"],
       // CSS is empty in tests, except `?raw` imports: tests/styles.test.ts reads layout rules from them
       css: { include: [/\.css\?raw$/] },
     },

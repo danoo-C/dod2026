@@ -72,7 +72,7 @@ Decisions this plan makes, to confirm or change:
 | What | Needed by |
 |---|---|
 | ~~what the 8x8 shows in manual mode~~ decided (backend step 7): an icon per preset, the drawing over it – "Ikona presetu" fits as it is | step 5 (not blocking) |
-| backend step 8 (music), which needs the song list | step 7 |
+| ~~backend step 8 (music)~~ done | step 7 |
 | the hotspot's name and password, for the Wi-Fi QR code | step 6 (until then: only the page's QR code) |
 | an Android phone and an iPhone for the hand checks | steps 5–8 |
 
@@ -567,17 +567,56 @@ Files: `apps/Music/Player.tsx`, `apps/Music/spectrum.ts`, `apps/Music/beat.ts`
 
 Done when:
 
-- [ ] Vitest: `spectrum.ts` turns a known bin array into the expected 32
+- [x] Vitest: `spectrum.ts` turns a known bin array into the expected 32
   bands; `beat.ts` finds the beats in a synthetic 120 BPM kick and none in
   white noise
-- [ ] by hand with `./dod sim`: a song picked on the phone → loading screens on
+- [x] by hand with `./dod sim`: a song picked on the phone → loading screens on
   the phone and the main screen, the terminal bursts → the video plays with
   sound → the preview follows the music → the song ends → back to the last
-  preset
-- [ ] ~30 spectrum messages a second (`/api/status` or the backend's log),
-  none while the window is minimised
+  preset – works in Edge (2026-11-04); VS Code's built-in browser panel plays
+  no sound, so use a real browser
+- [x] ~30 spectrum messages a second (`/api/status` or the backend's log),
+  none while the window is minimised – in Vitest with a fake analyser (27–31
+  in a second, none hidden or paused); in a real browser by hand
 - [ ] closing the main screen mid-song: the song ends within 10 s, the phones
-  grey the songs out; reopening it plays again
+  grey the songs out; reopening it plays again – the backend's side is tested
+  (backend step 8, `player_gone`); **in a browser by hand**
+
+Built:
+
+- `apps/Music/Player.tsx`, on the main screen: one `<video>` that stays in
+  the page (a media element connects to Web Audio only once; it is hidden
+  while no song plays), following `state.music.song`: `/media/<id>.mp4`, from
+  `now − started_at` if the song already runs (a reload), stopped and emptied
+  when it goes `null`. `player` messages once a second; `ended: true` on the
+  video's `ended` or `error`, and when the browser refuses to play it.
+- `apps/Music/audioGraph.ts`: `MediaElementSource → AnalyserNode (fftSize
+  2048, smoothing 0.6) → speakers`, once per element; resumed after the
+  "Spustiť" click. Without Web Audio the video still plays, only without a
+  spectrum. A module of its own so the tests replace it. After the first try
+  by hand (no sound in VS Code's built-in browser panel, fine in Edge): the
+  audio context is now created and resumed in the "Spustiť" click itself
+  (`primeAudio()`), where every browser allows sound – created later, a strict
+  browser can leave it suspended, and a video routed through a suspended
+  context plays silently; and a graph that fails to build leaves the video on
+  its own sound instead of breaking playback.
+- `apps/Music/spectrum.ts`: `bandEdges()` – 32 bands, logarithmic from 40 Hz
+  to 16 kHz, at least one bin each (the lowest is one 23 Hz bin, the highest
+  ~70); `toBands()`; `AutoGain` – the loudest band of the last few seconds
+  becomes 1 (follows up at once, lets go ~halving in 4–5 s, a floor so silence
+  stays quiet). `apps/Music/beat.ts`: the lowest 4 bands' energy above 1.4 ×
+  its average over 1 s, above 0.15, at least 0.3 s apart. The "white noise"
+  test feeds flat bands with a small wobble, which is what noise looks like
+  after the analyser's smoothing.
+- the spectrum: `requestAnimationFrame`, sent at most every 1/30 s, only while
+  the video plays and the page is visible.
+- `tests/setup.ts`: jsdom's `play()`, `pause()` and `load()` only log "not
+  implemented"; stubbed before every test (Vitest `setupFiles`).
+- 188 frontend tests (~4.5 s); four deliberate breaks (no gap between beats,
+  the spectrum every frame, no seek on a reload, sending while hidden) each
+  make the right test fail.
+- checked by hand, read-only against the running `./dod sim`: Vite serves the
+  player, and `/media/dQw4w9WgXcQ.mp4` through it with 206.
 
 ### Step 8. End to end
 
