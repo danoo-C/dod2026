@@ -155,7 +155,12 @@ Built:
   `node_modules` is missing or older than the lock file. `sim` and `dev` run
   the backend in the background and Vite in front, on the network
   `dod2026-dev`; Ctrl-C stops both. The backend's port 8000 is published
-  too, for `curl /api/status`.
+  too, for `curl /api/status`. Neither container gets a terminal (`-t`): with
+  one, Docker put the shared terminal into raw mode and the backend's lines
+  came out as a staircase. Without a terminal Vite ignores SIGINT, so both
+  run in the background and `./dod`'s trap stops them on Ctrl-C (or when
+  either one ends). A second `./dod sim` while one runs refuses to start
+  instead of stopping the first one's containers.
 - `./dod schema` writes `messages.json` and then `src/api/messages.ts`
   (`scripts/types.mjs`, json-schema-to-typescript). Field titles and the
   bands' length are left out of the types (they would give aliases like

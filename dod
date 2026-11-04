@@ -134,20 +134,40 @@ dev_stack() {
     if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
         docker network create "$NETWORK" >/dev/null
     fi
-    # the backend runs in the background: no terminal of its own
-    local bg=() a key="${DOD_INTERNAL_KEY:-dev}"
+    # Neither container gets a terminal (-t) or stdin (-i): with a terminal,
+    # Docker puts this one into raw mode, and the other container's lines then
+    # start where the last one ended instead of at the left edge. Both run in
+    # the background, and Ctrl-C is handled here: Vite without a terminal
+    # ignores SIGINT, so the trap stops both containers (SIGTERM).
+    local bg=() fg=() a key="${DOD_INTERNAL_KEY:-dev}"
     for a in "${args[@]}"; do
         if [[ "$a" != "-t" && "$a" != "-i" ]]; then
             bg+=("$a")
         fi
     done
+    for a in "${nargs[@]}"; do
+        if [[ "$a" != "-t" && "$a" != "-i" ]]; then
+            fg+=("$a")
+        fi
+    done
+    # another ./dod sim (or ./dod backend) already runs: say so, and leave its
+    # containers alone (the trap below would stop them)
+    local running
+    running=$(docker ps --filter name='^dod2026-(backend|vite)$' --format '{{.Names}}' | tr '\n' ' ')
+    if [[ -n "$running" ]]; then
+        echo "dod: already running: ${running}(another ./dod sim or ./dod backend); stop it first" >&2
+        exit 1
+    fi
     trap 'docker stop dod2026-backend dod2026-vite >/dev/null 2>&1 || true' EXIT
+    trap 'echo; echo "dod: stopping" >&2; exit 130' INT TERM
     docker run "${bg[@]}" --name dod2026-backend --network "$NETWORK" -p "$PORT_HTTP:$PORT_HTTP" \
         -e DOD_INTERNAL_KEY="$key" "$IMAGE" "${BACKEND_CMD[@]}" &
     echo "dod: http://localhost:$PORT_VITE  (internal pages: /internal/main?key=$key, /internal/logging?key=$key)" >&2
-    docker run "${nargs[@]}" --name dod2026-vite --network "$NETWORK" -p "$PORT_VITE:$PORT_VITE" \
+    docker run "${fg[@]}" --name dod2026-vite --network "$NETWORK" -p "$PORT_VITE:$PORT_VITE" \
         -e DOD_BACKEND="http://dod2026-backend:$PORT_HTTP" "$NODE_IMAGE" \
-        npx vite --host 0.0.0.0 --port "$PORT_VITE" --strictPort
+        npx vite --host 0.0.0.0 --port "$PORT_VITE" --strictPort &
+    # until Ctrl-C, or until either one ends by itself (then the trap stops the other)
+    wait -n
 }
 
 run_tests() {
