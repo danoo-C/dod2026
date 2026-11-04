@@ -954,6 +954,17 @@
         "inactive_seconds": {
           "title": "Inactive Seconds",
           "type": "number"
+        },
+        "wifi": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/WifiInfo"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         }
       },
       "required": [
@@ -964,9 +975,29 @@
         "songs",
         "public_url",
         "turn_seconds",
-        "inactive_seconds"
+        "inactive_seconds",
+        "wifi"
       ],
       "title": "Welcome",
+      "type": "object"
+    },
+    "WifiInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "ssid": {
+          "title": "Ssid",
+          "type": "string"
+        },
+        "password": {
+          "title": "Password",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ssid",
+        "password"
+      ],
+      "title": "WifiInfo",
       "type": "object"
     },
     "You": {

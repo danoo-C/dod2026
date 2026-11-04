@@ -286,6 +286,9 @@ class Hub:
             public_url=s.public_url,
             turn_seconds=s.turn_seconds,
             inactive_seconds=s.inactive_seconds,
+            # the main screen shows it as a QR code; nobody else needs it
+            wifi=(m.WifiInfo(ssid=s.wifi_ssid, password=s.wifi_password)
+                  if conn.role == "main" and s.wifi_ssid is not None and s.wifi_password is not None else None),
         ).model_dump_json()
 
     # --- commands

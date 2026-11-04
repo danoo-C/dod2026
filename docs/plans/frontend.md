@@ -488,13 +488,53 @@ Done when:
 - [ ] by hand on a 1920×1080 and a 1366×768 screen, full screen in Edge
   (`msedge --app=… --start-fullscreen`): nothing overflows, the terminal is
   readable from 2 m, the QR codes scan from 1.5 m with an Android phone and
-  an iPhone
-- [ ] each admin action does what it says (seen on a phone and in the state);
-  Ctrl+Alt+D does nothing on `/`
-- [ ] Vitest: the right part switches between video and QR codes with
+  an iPhone – **needs the screens and phones**
+- [x] each admin action does what it says (seen on a phone and in the state);
+  Ctrl+Alt+D does nothing on `/` – the messages and the shortcut in Vitest;
+  seeing them act on a phone needs a browser
+- [x] Vitest: the right part switches between video and QR codes with
   `state.mode`; the Wi-Fi QR code is left out without `welcome.wifi`
-- [ ] backend tests: the two settings are checked together; `wifi` is only in
+- [x] backend tests: the two settings are checked together; `wifi` is only in
   the main screen's `welcome`
+
+Built:
+
+- `screens/Main.tsx` + `styles/main.css`: the mockup's layout over the whole
+  window – the live terminal at `--term-w`, the right part, the info bar
+  (what plays with its progress on the server's clock, or the preset; the
+  small preview; the queue length; the small QR codes while a song plays;
+  the badge).
+- the right part: `mode === "music"` → the video, until step 7 a
+  placeholder with the song's title; otherwise the attract view: "Naskenuj
+  kód a ovládaj svetlá", the queue in words, the large preview, the big QR
+  codes (Wi-Fi first, then the page).
+- **"Spustiť"** (`StartGate`, in `routes.tsx` outside the provider): the main
+  screen doesn't connect until the click. The backend counts a main screen as
+  the player as soon as it connects (`player_connected`), so connecting late
+  is what keeps it from being the player before audio is allowed – no
+  backend change needed. A reload asks again; the browser wants the click
+  on every load anyway.
+- `components/AdminPanel.tsx`: opens with Ctrl+Alt+D (by `e.code`, so a
+  Slovak keyboard's AltGr+D works), Esc or a click outside closes it, not in
+  the page until opened. Skip (greyed out with nobody in control), pause /
+  resume (following `queue.paused`), stop the song (greyed out without one),
+  the terminal's width 25–33 % (`localStorage`, `dod.termWidth`), and
+  `/api/status` every 2 s while open: link state, port, firmware, LEDs, both
+  fps, round trip, frames sent, reconnects, last error, tasks and their
+  restarts, connections.
+- 4001: the `ConnectionGate` overlay from step 2, with "Prevziať".
+- backend: `DOD_WIFI_SSID` (1–32 characters) and `DOD_WIFI_PASSWORD` (8–63,
+  WPA2's limits), both or neither – a model check whose message names both
+  variables; `Welcome.wifi` (`WifiInfo` or `null`), filled for the main role
+  only. backend.md 9 and 11, tech-spec 6.3 (the launcher passes them).
+- the hello page is gone; every route is its real screen now.
+- 159 frontend tests (~4 s), 431 backend; four deliberate breaks (no start
+  gate, the bar's QR codes always, the shortcut without Alt, the Wi-Fi sent to
+  every role) each make the right tests fail.
+- checked by hand: `./dod sim` with both settings – the main screen's
+  `welcome` has them, the phone's has `null`; only the SSID stops the backend
+  with "DOD_WIFI_SSID and DOD_WIFI_PASSWORD: set both, or neither"; the page
+  and its modules are served.
 
 ### Step 7. Music on the main screen (backend.md 6; tech-spec 5.2)
 

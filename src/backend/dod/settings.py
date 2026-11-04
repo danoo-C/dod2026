@@ -20,7 +20,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 PREFIX = "DOD_"
 LOG_LEVELS = ("DEBUG", "INFO", "WARNING", "ERROR")
@@ -54,6 +54,9 @@ class Settings(BaseModel):
     public_url: str = "http://localhost:8000"
     cache_dir: Path = Path("/work/cache")
     log_level: str = "INFO"
+    # the notebook's hotspot, for the main screen's Wi-Fi QR code (tech-spec 6.4); both or neither
+    wifi_ssid: str | None = Field(None, min_length=1, max_length=32)
+    wifi_password: str | None = Field(None, min_length=8, max_length=63)  # WPA2's limits
 
     @field_validator("serial")
     @classmethod
@@ -89,6 +92,12 @@ class Settings(BaseModel):
             raise ValueError("expected a directory")
         return v
 
+    @model_validator(mode="after")
+    def _wifi_both_or_neither(self) -> Settings:
+        if (self.wifi_ssid is None) != (self.wifi_password is None):
+            raise ValueError("DOD_WIFI_SSID and DOD_WIFI_PASSWORD: set both, or neither")
+        return self
+
     @classmethod
     def env_name(cls, field: str) -> str:
         return PREFIX + field.upper()
@@ -108,8 +117,11 @@ class Settings(BaseModel):
             settings = cls(**values)
         except ValidationError as e:
             for err in e.errors():
-                field = str(err["loc"][0])
                 msg = err["msg"].removeprefix("Value error, ")
+                if not err["loc"]:  # a check of several settings together: its message names them
+                    problems.append(msg)
+                    continue
+                field = str(err["loc"][0])
                 problems.append(f"{cls.env_name(field)}={values.get(field, '')!r}: {msg}")
             settings = None
         if problems:

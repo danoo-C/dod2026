@@ -134,6 +134,11 @@ class SongInfo(_Out):
     ready: bool  # downloaded: the main screen can play it
 
 
+class WifiInfo(_Out):
+    ssid: str
+    password: str
+
+
 class Welcome(_Out):
     type: Literal["welcome"] = "welcome"
     role: Role
@@ -143,6 +148,7 @@ class Welcome(_Out):
     public_url: str
     turn_seconds: float
     inactive_seconds: float
+    wifi: WifiInfo | None = None  # the hotspot, for its QR code: the main screen's welcome only
 
 
 class ManualPart(_Out):

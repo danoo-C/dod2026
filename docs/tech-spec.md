@@ -450,8 +450,9 @@ Desktop's kernel. **(verify)** – fallback if A is too slow.
 3. starts the serial ↔ TCP bridge (6.2 A)
 4. builds the image if it is missing (`docker build -t dod2026 .`)
 5. finds the notebook's hotspot address, so the main screen can show
-   `http://<ip>:8000` as a QR code for phones, and makes a random internal key
-6. `docker run --rm --name dod2026 -p 8000:8000 -v .\cache:/work/cache -e DOD_SERIAL=socket://host.docker.internal:7777 -e DOD_PUBLIC_URL=http://<ip>:8000 -e DOD_INTERNAL_KEY=<key> dod2026`
+   `http://<ip>:8000` as a QR code for phones, reads the hotspot's name and
+   password for the Wi-Fi QR code, and makes a random internal key
+6. `docker run --rm --name dod2026 -p 8000:8000 -v .\cache:/work/cache -e DOD_SERIAL=socket://host.docker.internal:7777 -e DOD_PUBLIC_URL=http://<ip>:8000 -e DOD_INTERNAL_KEY=<key> -e DOD_WIFI_SSID=<name> -e DOD_WIFI_PASSWORD=<password> dod2026`
 7. opens `http://localhost:8000/internal/main?key=<key>` as one full-screen
    browser window (Edge is built into Windows:
    `msedge --app=<url> --start-fullscreen`). The browser may block audio until

@@ -601,7 +601,7 @@ dropped (`state` and `you` are full snapshots, so the newest is enough).
 
 | `type` | To | When | Fields |
 |---|---|---|---|
-| `welcome` | each, once | on connect | role, own short session id, presets with their parameters, songs, public URL, turn length, inactivity limit |
+| `welcome` | each, once | on connect | role, own short session id, presets with their parameters, songs, public URL, turn length, inactivity limit, the hotspot's name and password for its QR code (`main` only, `null` for the others or without `DOD_WIFI_*`) |
 | `state` | all | on change, ≤ 20 / s | the state from section 6, with the server's `now`; changes in between are coalesced |
 | `you` | each | when it changes for that browser | short session id, position in the queue (0 = in control), in control or not, turn end |
 | `preview` | all | 10 / s | strip as `"#rrggbb"` strings, the 8x8 as 16 hex characters (like the drawing), brightness 0–15 |
@@ -687,6 +687,8 @@ All from environment variables, read once at startup (`settings.py`):
 | `DOD_PUBLIC_URL` | `http://localhost:8000` | for the QR code |
 | `DOD_CACHE_DIR` | `/work/cache` | the songs |
 | `DOD_LOG_LEVEL` | `INFO` | the real log |
+| `DOD_WIFI_SSID` | – | the hotspot's name, for the main screen's Wi-Fi QR code (tech-spec 6.4); with `DOD_WIFI_PASSWORD` or not at all |
+| `DOD_WIFI_PASSWORD` | – | its password, 8–63 characters; sent in the main screen's `welcome` only |
 
 Wrong values (a negative brightness, an unknown serial URL) stop the backend
 at startup with a clear message, instead of misbehaving later. Every wrong

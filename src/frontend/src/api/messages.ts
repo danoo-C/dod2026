@@ -104,6 +104,7 @@ export interface Welcome {
   public_url: string;
   turn_seconds: number;
   inactive_seconds: number;
+  wifi: WifiInfo | null;
 }
 /**
  * This interface was referenced by `Messages`'s JSON-Schema
@@ -145,6 +146,14 @@ export interface SongInfo {
   title: string;
   length: number | null;
   ready: boolean;
+}
+/**
+ * This interface was referenced by `Messages`'s JSON-Schema
+ * via the `definition` "WifiInfo".
+ */
+export interface WifiInfo {
+  ssid: string;
+  password: string;
 }
 /**
  * This interface was referenced by `Messages`'s JSON-Schema

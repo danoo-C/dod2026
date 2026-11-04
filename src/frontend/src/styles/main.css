@@ -1,0 +1,301 @@
+/* /internal/main, the notebook's screen (plan step 6), as in docs/preview.html,
+   over the whole window (Edge full screen, 1366×768 to 1920×1080). */
+
+.nb {
+  --term-w: 30%;
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-columns: var(--term-w) minmax(0, 1fr);
+  background: var(--ink);
+  overflow: hidden;
+}
+.nb > .term {
+  border-right: 1px solid var(--line);
+}
+
+.stage {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* the song */
+.video {
+  position: relative;
+  min-height: 0;
+  overflow: hidden;
+  background: #0a0b16;
+}
+.video video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  background: #000;
+}
+.video-meta {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 18px;
+  background: linear-gradient(transparent, rgb(6 7 13 / 0.85));
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.chip {
+  align-self: flex-start;
+  font: 700 10px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  padding: 4px 7px;
+  border-radius: 4px;
+  background: var(--hot);
+  color: var(--ink);
+}
+.video-meta h2 {
+  margin: 4px 0 0;
+  font: 700 clamp(15px, 2vw, 28px) / 1.15 var(--f-display);
+}
+.video-meta p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* no song: inviting people */
+.idle {
+  min-height: 0;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: clamp(16px, 2.5vw, 40px);
+  padding: clamp(16px, 3vw, 48px);
+  background: radial-gradient(circle at 20% 30%, rgb(255 77 141 / 0.14), transparent 55%),
+    radial-gradient(circle at 85% 80%, rgb(56 212 255 / 0.12), transparent 50%), #0a0b16;
+}
+.idle h2 {
+  margin: 0 0 12px;
+  font: 800 clamp(22px, 3vw, 48px) / 1.08 var(--f-display);
+  text-wrap: balance;
+}
+.idle p {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: clamp(13px, 1.2vw, 20px);
+}
+.idle .idle-queue {
+  color: var(--fg);
+  font-weight: 700;
+  margin-bottom: 22px;
+}
+.qrs {
+  display: flex;
+  gap: clamp(10px, 1.4vw, 22px);
+  align-items: flex-start;
+}
+.idle .qr {
+  font-size: clamp(11px, 0.9vw, 15px);
+  gap: 8px;
+}
+
+/* the info bar */
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 20px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.lbl {
+  font: 700 10px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.np {
+  flex: 1 1 220px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.np b {
+  font-size: clamp(13px, 1.2vw, 17px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prog {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+.prog i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--hot), var(--warm));
+}
+.time {
+  font: 400 11px/1 var(--f-mono);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.q {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.q .big {
+  font: 800 24px/1 var(--f-display);
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Spustiť */
+.start {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  text-align: center;
+  padding: 24px;
+  background: radial-gradient(circle at 30% 30%, rgb(255 77 141 / 0.18), transparent 55%), var(--ink);
+}
+.start h1 {
+  margin: 0;
+  font: 800 clamp(28px, 4vw, 56px) / 1.05 var(--f-display);
+  background: linear-gradient(90deg, var(--hot), var(--warm) 45%, var(--cool));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.start p {
+  margin: 0;
+  color: var(--muted);
+  max-width: 50ch;
+}
+.start-btn {
+  margin-top: 8px;
+  padding: 18px 56px;
+  border: 0;
+  border-radius: 999px;
+  font: 800 22px/1 var(--f-display);
+  background: linear-gradient(90deg, var(--hot), var(--warm));
+  color: var(--ink);
+}
+
+/* the admin panel */
+.admin-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(4 5 10 / 0.6);
+  display: grid;
+  place-items: center;
+  z-index: 20;
+}
+.admin {
+  width: min(560px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 24px 60px rgb(0 0 0 / 0.5);
+}
+.admin header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.admin h2 {
+  margin: 0;
+  flex: 1;
+  font: 700 18px/1.2 var(--f-display);
+}
+.admin .ghost {
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 6px 12px;
+}
+.admin-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.admin-actions button {
+  min-height: 44px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  border-radius: 10px;
+  font-weight: 700;
+}
+.admin-actions button:hover:not(:disabled) {
+  border-color: var(--hot);
+}
+.admin-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.admin .note {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+.admin-width {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) 44px;
+  align-items: center;
+  gap: 12px;
+  font-size: 14px;
+}
+.admin-width input {
+  accent-color: var(--hot);
+}
+.admin-width output {
+  font: 600 12px/1 var(--f-mono);
+  color: var(--muted);
+  text-align: right;
+}
+.admin-status {
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 16px;
+  font-size: 12px;
+}
+.admin-status div {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 4px;
+  min-width: 0;
+}
+.admin-status dt {
+  color: var(--muted);
+}
+.admin-status dd {
+  margin: 0;
+  font-family: var(--f-mono);
+  text-align: right;
+  overflow-wrap: anywhere;
+}

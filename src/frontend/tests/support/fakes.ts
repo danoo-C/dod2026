@@ -95,6 +95,7 @@ export const WELCOME: Welcome = {
   public_url: "http://192.168.137.1:8000",
   turn_seconds: 180,
   inactive_seconds: 30,
+  wifi: null,
 };
 
 export function stateAt(now: number, part: Partial<StateMessage["queue"]> = {}): StateMessage {

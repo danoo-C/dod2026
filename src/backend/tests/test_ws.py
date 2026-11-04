@@ -314,6 +314,22 @@ def test_logs_go_to_main_and_logging_never_to_phones(client):
 # --- HTTP ---------------------------------------------------------------------
 
 
+def test_only_the_main_screen_gets_the_wifi():
+    with TestClient(app(wifi_ssid="DOD-SPSE", wifi_password="svetlo2026")) as c:
+        for role, key in (("main", KEY), ("logging", KEY), ("phone", None)):
+            cm, _ = connect(c, role=role, key=key)
+            with cm as ws:
+                welcome = ws.receive_json()
+                expected = {"ssid": "DOD-SPSE", "password": "svetlo2026"} if role == "main" else None
+                assert welcome["wifi"] == expected, role
+
+
+def test_without_the_wifi_settings_nobody_gets_it(client):
+    cm, _ = connect(client, role="main", key=KEY)
+    with cm as ws:
+        assert ws.receive_json()["wifi"] is None
+
+
 def test_api_session_sets_the_cookie_once(client):
     client.cookies.clear()
     first = client.get("/api/session")

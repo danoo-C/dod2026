@@ -15,17 +15,19 @@ note) and the design in [backend.md](backend.md).
   control and use the admin commands; every browser gets state, its own queue
   position and live previews over the WebSocket; `main` and `logging` get the
   fake logs, starting with the last 300 lines.
-- **Frontend: steps 1–5 of 8 done** (tooling, the connection, the shared
-  components, the logging page, the phone). React + Vite in `src/frontend/`, `./dod sim` runs the backend
+- **Frontend: steps 1–6 of 8 done** (tooling, the connection, the shared
+  components, the logging page, the phone, the main screen). React + Vite in `src/frontend/`, `./dod sim` runs the backend
   and Vite together on http://localhost:5173. Every screen connects with its
   role and reconnects by itself; the components (preview, terminal, loading
   screen, QR, countdown, badge, toast) have the mockup's look, and
   http://localhost:5173/components.html shows them all with fake data.
-  `/` is the real phone (queue, loading, presets and their parameters,
-  drawing, songs, time's up) and `/internal/logging` the real terminal page;
-  the main screen still shows a hello page.
+  All three screens are real: `/` the phone (queue, loading, presets and
+  their parameters, drawing, songs, time's up), `/internal/main` the
+  notebook's screen ("Spustiť", the terminal, QR codes, queue, preview,
+  the admin panel on Ctrl+Alt+D; the video comes with step 7),
+  `/internal/logging` the terminal alone.
 - **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 424
-  (~19 s), frontend 144 (~3.5 s, plus the type checks).
+  (~20 s), frontend 159 (~4 s, plus the type checks).
 - **Git:** `dod2026/` is its own repo (branch `main`, no remote yet).
 
 | Step | What | State |
@@ -68,16 +70,24 @@ note) and the design in [backend.md](backend.md).
      presets, every parameter, a drawing show up in the other's preview; after
      3 min "Tvoj čas skončil" and the second one's turn. On real phones once
      WSL's networking is changed.
+   - http://localhost:5173/internal/main?key=dev, full screen (F11), at
+     1920×1080 and 1366×768: "Spustiť", then nothing overflows, the terminal
+     is readable from 2 m; Ctrl+Alt+D opens the admin panel, and skip /
+     pause / stop act on the phone windows. With
+     `DOD_WIFI_SSID=… DOD_WIFI_PASSWORD=… ./dod sim` the Wi-Fi QR code shows
+     too; scan both from 1.5 m.
    - http://localhost:5173/internal/logging?key=dev: opens full of lines,
      keeps scrolling, a reload is full again at once; left open for an hour
      in Edge, the tab's memory stays flat (Task Manager)
    For a phone, WSL's NAT mode needs a change on Windows first (frontend
    plan, step 1, "Built").
-3. **Frontend step 6** (the main screen: the terminal, the QR codes, the
-   queue, the preview, the admin panel; the video comes with step 7) –
-   recommended next. It needs the hotspot's name and password for the Wi-Fi
-   QR code, but can be built without them (then only the page's QR code
-   shows). Step 7 (music) waits for backend step 8. `docs/preview.html` is the clickable mockup the
+3. **Everything left waits for the two answers in 1.** Backend step 7
+   needs the 8x8 decision; backend step 8 needs the song list, and frontend
+   step 7 (the player and the spectrum) needs backend step 8. Backend
+   step 10 and frontend step 8 (end to end) come after those. Until the
+   answers come, the hand checks above are what's left. The hotspot's name
+   and password are open too (for the Wi-Fi QR code; until then only the
+   page's QR code shows). `docs/preview.html` is the clickable mockup the
    screens follow.
 
 ## How to pick up

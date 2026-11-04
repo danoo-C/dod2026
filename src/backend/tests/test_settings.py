@@ -36,6 +36,7 @@ def test_defaults_without_any_variable():
     assert s.public_url == "http://localhost:8000"
     assert s.cache_dir == Path("/work/cache")
     assert s.log_level == "INFO"
+    assert s.wifi_ssid is None and s.wifi_password is None
 
 
 def test_the_internal_key_is_random_when_not_set():
@@ -59,6 +60,9 @@ def test_the_table_in_the_docs_matches():
             assert doc.startswith("random")
             continue
         value = getattr(defaults, fields[var])
+        if value is None:
+            assert doc == "–", var  # not set
+            continue
         doc = doc.strip("`")
         if isinstance(value, (int, float)):
             assert float(doc) == value, var
@@ -134,6 +138,24 @@ def test_wrong_values_name_the_variable(var, value, says):
     [problem] = problems({var: value})
     assert problem.startswith(f"{var}={value!r}: ")
     assert says in problem
+
+
+def test_the_wifi_is_both_or_neither():
+    s = Settings.from_env({"DOD_WIFI_SSID": "DOD-SPSE", "DOD_WIFI_PASSWORD": "svetlo2026"})
+    assert (s.wifi_ssid, s.wifi_password) == ("DOD-SPSE", "svetlo2026")
+    for alone in ({"DOD_WIFI_SSID": "DOD-SPSE"}, {"DOD_WIFI_PASSWORD": "svetlo2026"}):
+        assert problems(alone) == ["DOD_WIFI_SSID and DOD_WIFI_PASSWORD: set both, or neither"]
+
+
+@pytest.mark.parametrize("var, value, says", [
+    ("DOD_WIFI_PASSWORD", "short", "at least 8 characters"),  # a WPA2 password is 8-63
+    ("DOD_WIFI_PASSWORD", "x" * 64, "at most 63 characters"),
+    ("DOD_WIFI_SSID", "x" * 33, "at most 32 characters"),
+])
+def test_wrong_wifi_values_name_the_variable(var, value, says):
+    other = {"DOD_WIFI_SSID": "DOD-SPSE", "DOD_WIFI_PASSWORD": "svetlo2026"}
+    found = problems({**other, var: value})
+    assert any(p.startswith(f"{var}={value!r}: ") and says in p for p in found), found
 
 
 def test_unknown_variables_are_an_error_with_a_hint():
