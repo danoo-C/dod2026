@@ -77,8 +77,8 @@ def test_a_phone_gets_welcome_state_and_you(client):
         welcome = ws.receive_json()
         assert welcome["type"] == "welcome" and welcome["role"] == "phone"
         assert welcome["session"] == public_id(token)[:4]
-        assert [p["id"] for p in welcome["presets"]] == ["solid", "rainbow"]
-        assert welcome["presets"][1]["params"][0]["label"] == "Rýchlosť"
+        assert [p["id"] for p in welcome["presets"]] == ["rainbow", "fire", "police", "breathe", "comet", "strobe", "solid"]
+        assert welcome["presets"][0]["params"][0]["label"] == "Rýchlosť"
         assert welcome["turn_seconds"] == 180 and welcome["songs"] == []
         state = ws.receive_json()
         assert state["type"] == "state" and state["mode"] == "idle"

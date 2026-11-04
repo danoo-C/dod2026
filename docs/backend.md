@@ -461,8 +461,9 @@ shows comes from the mode:
 - **music** – 8 spectrum bars from the 32 bands
 - **idle** – a slow "waiting" animation
 
-Which icons and animations exactly is still open (tech-spec 5.3) and is
-decided while building the presets.
+Which icon for which preset is in tech-spec 5.3 (decided in plan step 7);
+the icons are in `engine/matrix.py`, the animations in each effect. Like the
+strip, every 8x8 animation stays under the flash limit on its own.
 
 ## 8. The queue
 
@@ -748,7 +749,7 @@ Decisions this design makes, to confirm or change:
    (section 11). Full white on 10 LEDs is 600 mA, so this only matters if the
    strip ever gets longer.
 
-Still open from before: what the 8x8 shows in manual mode (tech-spec 5.3).
+Decided in plan step 7: the 8x8 in manual mode (tech-spec 5.3).
 
 Decided in the review on 2026-11-03, already written into the sections above:
 inactivity always releases control (8); the three ways a song ends and

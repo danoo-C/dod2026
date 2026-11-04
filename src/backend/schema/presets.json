@@ -1,51 +1,5 @@
 [
   {
-    "id": "solid",
-    "name": "Farba",
-    "params": [
-      {
-        "name": "color",
-        "label": "Farba",
-        "kind": "color",
-        "default": "#ff2a6d",
-        "min": null,
-        "max": null,
-        "step": null,
-        "options": null
-      },
-      {
-        "name": "fade",
-        "label": "Prelínanie",
-        "kind": "toggle",
-        "default": false,
-        "min": null,
-        "max": null,
-        "step": null,
-        "options": null
-      },
-      {
-        "name": "color2",
-        "label": "Druhá farba",
-        "kind": "color",
-        "default": "#05d9e8",
-        "min": null,
-        "max": null,
-        "step": null,
-        "options": null
-      },
-      {
-        "name": "fade_seconds",
-        "label": "Dĺžka prelínania (s)",
-        "kind": "slider",
-        "default": 3.0,
-        "min": 0.5,
-        "max": 10.0,
-        "step": 0.5,
-        "options": null
-      }
-    ]
-  },
-  {
     "id": "rainbow",
     "name": "Dúha",
     "params": [
@@ -97,6 +51,253 @@
             "label": "Doľava"
           }
         ]
+      }
+    ]
+  },
+  {
+    "id": "fire",
+    "name": "Oheň",
+    "params": [
+      {
+        "name": "speed",
+        "label": "Rýchlosť",
+        "kind": "slider",
+        "default": 1.0,
+        "min": 0.3,
+        "max": 2.0,
+        "step": 0.1,
+        "options": null
+      },
+      {
+        "name": "wildness",
+        "label": "Divokosť",
+        "kind": "slider",
+        "default": 0.6,
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.05,
+        "options": null
+      },
+      {
+        "name": "palette",
+        "label": "Plameň",
+        "kind": "choice",
+        "default": "classic",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": [
+          {
+            "value": "classic",
+            "label": "Oheň"
+          },
+          {
+            "value": "blue",
+            "label": "Modrý"
+          },
+          {
+            "value": "green",
+            "label": "Zelený"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "police",
+    "name": "Polícia",
+    "params": [
+      {
+        "name": "speed",
+        "label": "Rýchlosť",
+        "kind": "slider",
+        "default": 1.0,
+        "min": 0.5,
+        "max": 2.0,
+        "step": 0.1,
+        "options": null
+      },
+      {
+        "name": "colours",
+        "label": "Farby",
+        "kind": "choice",
+        "default": "redblue",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": [
+          {
+            "value": "redblue",
+            "label": "Červená a modrá"
+          },
+          {
+            "value": "amber",
+            "label": "Oranžová"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "breathe",
+    "name": "Dýchanie",
+    "params": [
+      {
+        "name": "color",
+        "label": "Farba",
+        "kind": "color",
+        "default": "#ff4d8d",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "speed",
+        "label": "Rýchlosť",
+        "kind": "slider",
+        "default": 0.25,
+        "min": 0.1,
+        "max": 0.8,
+        "step": 0.05,
+        "options": null
+      },
+      {
+        "name": "floor",
+        "label": "Najnižší jas",
+        "kind": "slider",
+        "default": 0.1,
+        "min": 0.0,
+        "max": 0.5,
+        "step": 0.05,
+        "options": null
+      }
+    ]
+  },
+  {
+    "id": "comet",
+    "name": "Kométa",
+    "params": [
+      {
+        "name": "color",
+        "label": "Farba",
+        "kind": "color",
+        "default": "#38d4ff",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "speed",
+        "label": "Rýchlosť",
+        "kind": "slider",
+        "default": 0.5,
+        "min": 0.2,
+        "max": 1.5,
+        "step": 0.1,
+        "options": null
+      },
+      {
+        "name": "tail",
+        "label": "Dĺžka chvosta",
+        "kind": "slider",
+        "default": 3.0,
+        "min": 1.0,
+        "max": 6.0,
+        "step": 1.0,
+        "options": null
+      },
+      {
+        "name": "direction",
+        "label": "Smer",
+        "kind": "choice",
+        "default": "right",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": [
+          {
+            "value": "right",
+            "label": "Doprava"
+          },
+          {
+            "value": "left",
+            "label": "Doľava"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "strobe",
+    "name": "Stroboskop",
+    "params": [
+      {
+        "name": "rate",
+        "label": "Záblesky za sekundu",
+        "kind": "slider",
+        "default": 1.0,
+        "min": 0.5,
+        "max": 2.0,
+        "step": 0.1,
+        "options": null
+      },
+      {
+        "name": "color",
+        "label": "Farba",
+        "kind": "color",
+        "default": "#ffffff",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      }
+    ]
+  },
+  {
+    "id": "solid",
+    "name": "Farba",
+    "params": [
+      {
+        "name": "color",
+        "label": "Farba",
+        "kind": "color",
+        "default": "#ff2a6d",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "fade",
+        "label": "Prelínanie",
+        "kind": "toggle",
+        "default": false,
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "color2",
+        "label": "Druhá farba",
+        "kind": "color",
+        "default": "#05d9e8",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "fade_seconds",
+        "label": "Dĺžka prelínania (s)",
+        "kind": "slider",
+        "default": 3.0,
+        "min": 0.5,
+        "max": 10.0,
+        "step": 0.5,
+        "options": null
       }
     ]
   }

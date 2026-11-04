@@ -27,7 +27,7 @@ protocol from backend.md 9. The frontend's plan starts from there.
 
 | What | Needed by |
 |---|---|
-| what the 8x8 shows in manual mode (tech-spec 5.3) | step 7 |
+| ~~what the 8x8 shows in manual mode (tech-spec 5.3)~~ decided in step 7 | step 7 |
 | the song list: YouTube links of the songs for the stand, with a short title each | step 8 |
 
 ## Scope
@@ -398,7 +398,8 @@ Built:
 
 ### Step 7. The presets (backend.md 7.2, 7.4)
 
-Needs: what the 8x8 shows in manual mode, from you.
+Needs: what the 8x8 shows in manual mode – left to me, decided while
+building it (tech-spec 5.3).
 
 Files: `dod/engine/effects/fire.py`, `police.py`, `breathe.py`, `comet.py`,
 `strobe.py`; icons and animations in `dod/engine/matrix.py`
@@ -409,9 +410,43 @@ Files: `dod/engine/effects/fire.py`, `police.py`, `breathe.py`, `comet.py`,
 
 Done when:
 
-- [ ] all presets pass the step 3 effect tests
-- [ ] the strobe stays within the flash limit at every speed setting
-- [ ] the drawing reaches the simulated board's 8x8 unchanged
+- [x] all presets pass the step 3 effect tests
+- [x] the strobe stays within the flash limit at every speed setting
+- [x] the drawing reaches the simulated board's 8x8 unchanged
+
+Built:
+
+- five presets, in the phone's order after the rainbow: `fire.py` (Oheň:
+  speed, wildness, palette fire / blue / green; every LED flickers on its own
+  phase, a sum of sines, so it is deterministic and the strip's average hardly
+  moves), `police.py` (Polícia: the halves take turns, at most 2 swaps a
+  second, the other half dimmed to 6 %, not off; red and blue or amber; with
+  red and blue the strip's average stays almost the same), `breathe.py`
+  (Dýchanie: colour, 0.1–0.8 breaths a second, lowest brightness),
+  `comet.py` (Kométa: colour, 0.2–1.5 passes a second – passes, not LEDs, so
+  a long strip doesn't make it race – tail 1–6 LEDs, direction; a white head
+  fading into the colour), `strobe.py` (Stroboskop: 0.5–2 flashes a second,
+  0.1 s each, colour; the flash limit is 3, the preset stays under it on its
+  own). `Solid` is last in the order now ("Farba"); the rainbow stays the
+  first preset.
+- the 8x8, decided (tech-spec 5.3): an icon per preset, animated where it
+  makes sense; the drawing replaces it. `matrix.py` gets the icons (rainbow,
+  flame, lightning, drop; the old placeholder square is gone) and `ring()`,
+  `outline()`, `overlay()`.
+- tests: every preset, every parameter extreme, 1/10/60 LEDs (the step 3
+  tests: 729 backend tests now, most of them these cases); the strobe at
+  every step of its slider (0.5 to 2.0), at 1, 10 and 60 LEDs, 10 s each,
+  never held by the flash limit; it flashes exactly `rate` times a second for
+  ~0.1 s; police keeps the strip's average within 0.1 when it swaps; every
+  preset's 8x8 differs from the others' and the animated ones move; a drawing
+  reaches the 8x8 unchanged over every preset, frame after frame
+  (`test_loop.py`), and on the simulated board (`test_app.py`, from step 6).
+  Letting the strobe go to 3 flashes a second makes two tests fail.
+- checked by hand against the running backend: a phone picks each preset,
+  the render loop runs it at 30 fps, the previews show the strip moving
+  (police and strobe: two pictures, as designed) and the icon on the 8x8.
+- `./dod schema` rewrote `presets.json`; the phone shows the new presets with
+  no frontend change, as designed.
 
 ### Step 8. Music (backend.md 6, 7.4; tech-spec 5.2)
 

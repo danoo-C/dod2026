@@ -85,7 +85,7 @@ def test_the_presets_file_is_up_to_date():
     # the frontend's tests build the phone's controls from it
     assert PRESETS_FILE.exists(), "run ./dod schema"
     assert PRESETS_FILE.read_text(encoding="utf-8") == build_presets(), "the presets changed: run ./dod schema"
-    assert [p["id"] for p in json.loads(build_presets())] == ["solid", "rainbow"]
+    assert [p["id"] for p in json.loads(build_presets())] == ["rainbow", "fire", "police", "breathe", "comet", "strobe", "solid"]
 
 
 def test_the_schema_lists_every_message_with_its_type_required():

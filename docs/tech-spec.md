@@ -386,14 +386,28 @@ breaks yt-dlp and the school network can block or throttle YouTube.
 `src/backend/pyproject.toml` and updated (image rebuilt) in the week before the event,
 when the songs are downloaded.
 
-### 5.3 What the 8x8 does in manual mode **(open)**
+### 5.3 What the 8x8 does in manual mode
 
 The matrix is single colour and every pixel is only on or off; brightness
 (16 levels) is one setting for the whole matrix. So it shows shapes and
 movement, not colours or shades. The page's preview draws it in the same
 colour as the real LEDs.
 
-Some options, they can be combined:
+**Decided (2026-11-04):** every preset shows its own icon, animated where it
+makes sense, and a visitor's drawing replaces it as soon as they draw ("Ikona
+presetu" on the phone brings the icon back):
+
+| Preset | 8x8 |
+|---|---|
+| Dúha | a rainbow's arc |
+| Oheň | a flame, with sparks flickering above it |
+| Polícia | a block switching sides with the strip's halves |
+| Dýchanie | a ring growing and shrinking with the breath |
+| Kométa | a short comet along the diagonal |
+| Stroboskop | a lightning bolt; the whole matrix lights with each flash |
+| Farba | a drop of paint, emptying and filling with the fade |
+
+These were the options:
 
 - an icon per preset (flame for fire, siren for police, …), animated
 - the strip's activity as bars: one column per LED section, height = how
@@ -637,7 +651,7 @@ Answered:
 - screen: the notebook's screen split – fake terminal left, video right (5.1);
   phones are remotes only
 
-Still open:
+- 8x8 in manual mode: an animated icon per preset, the visitor's drawing
+  over it (5.3)
 
-1. What the 8x8 does in manual mode (section 5.3) – can be decided during
-   phase 2.
+Still open: nothing.

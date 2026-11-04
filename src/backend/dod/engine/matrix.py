@@ -1,12 +1,14 @@
 """Helpers for the 8x8 (docs/backend.md 7.4): single colour, every pixel on or
 off. A matrix is 8 row bytes, row 0 = top, bit 7 = the leftmost pixel.
 
-The icons and animations per preset are decided in step 7 (tech-spec 5.3);
-the ones here are what the first effects need.
+In manual mode every preset shows its own icon, animated where it makes
+sense, and a visitor's drawing replaces it (tech-spec 5.3, decided in plan
+step 7). The icons are below; the animations are in each effect.
 """
 
 from __future__ import annotations
 
+import math
 from collections.abc import Iterable, Sequence
 
 SIZE = 8
@@ -89,15 +91,70 @@ def border() -> list[tuple[int, int]]:
     return top + right + bottom + left
 
 
+def ring(radius: float, width: float = 0.75) -> bytes:
+    """A circle around the 8x8's centre: the pixels whose distance from it is
+    within `width` of `radius`."""
+    c = (SIZE - 1) / 2
+    return from_pixels((x, y) for y in range(SIZE) for x in range(SIZE)
+                       if abs(math.hypot(x - c, y - c) - radius) < width)
+
+
+def outline(matrix: bytes) -> bytes:
+    """The lit pixels that touch an unlit one or the edge (up, down, left, right)."""
+    def on(x: int, y: int) -> bool:
+        return 0 <= x < SIZE and 0 <= y < SIZE and is_on(matrix, x, y)
+    return from_pixels((x, y) for y in range(SIZE) for x in range(SIZE)
+                       if on(x, y) and not all(on(x + dx, y + dy) for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1))))
+
+
+def overlay(*matrices: bytes) -> bytes:
+    """Every pixel lit in any of them."""
+    rows = bytearray(SIZE)
+    for matrix in matrices:
+        for y in range(SIZE):
+            rows[y] |= matrix[y]
+    return bytes(rows)
+
+
 ICONS: dict[str, bytes] = {
-    "square": icon(
+    "rainbow": icon(
         "........",
+        "..####..",
         ".######.",
-        ".#....#.",
-        ".#....#.",
-        ".#....#.",
-        ".#....#.",
-        ".######.",
+        "###..###",
+        "##....##",
+        "#......#",
         "........",
+        "........",
+    ),
+    "flame": icon(
+        "...#....",
+        "...##...",
+        "..###...",
+        ".#####..",
+        ".##.###.",
+        "###..###",
+        "########",
+        ".######.",
+    ),
+    "lightning": icon(
+        "....##..",
+        "...##...",
+        "..##....",
+        ".######.",
+        "....##..",
+        "...##...",
+        "..##....",
+        "..#.....",
+    ),
+    "drop": icon(
+        "...##...",
+        "...##...",
+        "..####..",
+        ".######.",
+        ".######.",
+        "########",
+        ".######.",
+        "..####..",
     ),
 }

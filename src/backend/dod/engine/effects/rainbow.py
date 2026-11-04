@@ -1,10 +1,8 @@
-"""A rainbow moving along the strip."""
-
-import math
+"""A rainbow moving along the strip. The 8x8: a rainbow's arc."""
 
 from dod.engine.color import hsv
 from dod.engine.effects.base import Context, Effect, Param
-from dod.engine.matrix import from_pixels
+from dod.engine.matrix import ICONS
 from dod.engine.picture import Picture
 
 
@@ -24,8 +22,4 @@ class Rainbow(Effect):
         shift = ctx.t * p["speed"]
         n = ctx.led_count
         leds = [hsv(p["width"] * i / n - sign * shift, p["saturation"], 1.0) for i in range(n)]
-        # the 8x8 until step 7 decides: diagonal stripes moving with the colours
-        # (always 32 pixels on, so the 8x8 never flashes)
-        step = math.floor(shift * 8)
-        pixels = [(x, y) for x in range(8) for y in range(8) if (x + y - sign * step) % 4 < 2]
-        return Picture(leds=leds, matrix=from_pixels(pixels), matrix_brightness=0.6)
+        return Picture(leds=leds, matrix=ICONS["rainbow"], matrix_brightness=0.6)

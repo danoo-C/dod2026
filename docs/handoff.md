@@ -9,7 +9,7 @@ note) and the design in [backend.md](backend.md).
 
 - **HCL stage 1:** done earlier (the board's code and the Windows bridge,
   stages 2 and 3, are not started).
-- **Backend: steps 0–6 and 9 of 10 done.** The backend runs against the
+- **Backend: steps 0–7 and 9 of 10 done.** The backend runs against the
   simulated board: phones can get a session, join the queue, take control,
   pick presets, change parameters and draw on the 8x8; the main screen can
   control and use the admin commands; every browser gets state, its own queue
@@ -26,8 +26,9 @@ note) and the design in [backend.md](backend.md).
   notebook's screen ("Spustiť", the terminal, QR codes, queue, preview,
   the admin panel on Ctrl+Alt+D; the video comes with step 7),
   `/internal/logging` the terminal alone.
-- **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 424
-  (~20 s), frontend 159 (~4 s, plus the type checks).
+- **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 729
+  (~21 s, most of them the presets at every parameter extreme), frontend 166
+  (~4 s, plus the type checks).
 - **Git:** `dod2026/` is its own repo (branch `main`, no remote yet).
 
 | Step | What | State |
@@ -39,22 +40,20 @@ note) and the design in [backend.md](backend.md).
 | 4 | `hardware.py`, 30 fps render loop, `/api/status` | done |
 | 5 | state, sessions, queue | done |
 | 6 | API: messages, WebSocket hub, HTTP, JSON Schema | done |
-| 7 | the remaining presets | **waiting for you:** what the 8x8 shows in manual mode |
+| 7 | the remaining presets, the 8x8 per preset | done |
 | 8 | music: downloads, player, spectrum → light | **waiting for you:** the song list |
 | 9 | the fake logs | done |
 | 10 | end to end + 30 min soak | after 7–9 |
 
 ## What to do next
 
-1. **Answer the two open questions**, so steps 7 and 8 aren't blocked:
-   - **the 8x8 in manual mode** (tech-spec 5.3): an icon per preset,
-     the strip as bars, a face, the drawing only, or a mix. Drawing already
-     works; solid and rainbow show placeholders (a frame, moving stripes).
-   - **the song list:** YouTube links, each with a short title for the phone
-     (YouTube's own titles are too long). Max ~7 min per song.
+1. **The song list**, so backend step 8 (music) isn't blocked: YouTube
+   links, each with a short title for the phone (YouTube's own titles are too
+   long). Max ~7 min per song. (The 8x8 question is decided: an animated
+   icon per preset, the drawing over it – tech-spec 5.3.)
 2. **Look at `./dod sim` in a Windows browser** (http://localhost:5173) –
    the hand checks of frontend steps 1 and 2, not done yet:
-   - an edit to `src/frontend/src/screens/Hello.tsx` shows up without a reload
+   - an edit to `src/frontend/src/screens/Phone.tsx` shows up without a reload
    - `docker restart dod2026-backend` in another terminal (Vite keeps
      running): the page says "Odpojené, pripájam znova…" for a moment and
      comes back by itself
@@ -81,9 +80,8 @@ note) and the design in [backend.md](backend.md).
      in Edge, the tab's memory stays flat (Task Manager)
    For a phone, WSL's NAT mode needs a change on Windows first (frontend
    plan, step 1, "Built").
-3. **Everything left waits for the two answers in 1.** Backend step 7
-   needs the 8x8 decision; backend step 8 needs the song list, and frontend
-   step 7 (the player and the spectrum) needs backend step 8. Backend
+3. **Everything left waits for the song list.** Backend step 8 needs it,
+   and frontend step 7 (the player and the spectrum) needs backend step 8. Backend
    step 10 and frontend step 8 (end to end) come after those. Until the
    answers come, the hand checks above are what's left. The hotspot's name
    and password are open too (for the Wi-Fi QR code; until then only the

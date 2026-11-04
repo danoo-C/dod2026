@@ -6,6 +6,7 @@ import time
 
 import pytest
 
+from dod.engine.effects import PRESETS
 from dod.engine.effects.base import Context, Effect, Param
 from dod.engine.effects.idle import Idle
 from dod.engine.effects.rainbow import Rainbow
@@ -101,6 +102,16 @@ def test_the_effects_time_and_parameters():
     loop.set_params({"speed": 0.0})  # keeps the time going
     loop.tick(70.0)
     assert red(display) == round((60 / 100) ** 2.2 * 255) and display.frames[-1].leds[0][1] == 0
+
+
+@pytest.mark.parametrize("effect", list(PRESETS.values()), ids=list(PRESETS))
+def test_a_drawing_replaces_every_presets_8x8_unchanged(effect):
+    drawing = bytes.fromhex("183c7effff7e3c18")
+    loop, display, _ = make(effect())
+    loop.set_drawing(drawing)
+    for i in range(60):  # two seconds: the icon's animation never shows through
+        loop.tick(i / 30)
+        assert display.frames[-1].matrix == drawing
 
 
 def test_a_drawing_replaces_the_effects_8x8():

@@ -110,8 +110,8 @@ def test_check_param():
 
 
 def test_the_registry():
-    assert list(EFFECTS) == ["solid", "rainbow", "idle"]
-    assert list(PRESETS) == ["solid", "rainbow"]  # idle can't be picked
+    assert list(EFFECTS) == ["rainbow", "fire", "police", "breathe", "comet", "strobe", "solid", "idle"]
+    assert list(PRESETS) == ["rainbow", "fire", "police", "breathe", "comet", "strobe", "solid"]  # idle can't be picked
     for effect_id, effect in EFFECTS.items():
         assert effect.id == effect_id and effect.name
 

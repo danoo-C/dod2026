@@ -71,7 +71,7 @@ Decisions this plan makes, to confirm or change:
 
 | What | Needed by |
 |---|---|
-| what the 8x8 shows in manual mode (tech-spec 5.3) – the frontend draws whatever the preview says, so only the "Ikona presetu" button's label and hint wait for it | step 5 (not blocking) |
+| ~~what the 8x8 shows in manual mode~~ decided (backend step 7): an icon per preset, the drawing over it – "Ikona presetu" fits as it is | step 5 (not blocking) |
 | backend step 8 (music), which needs the song list | step 7 |
 | the hotspot's name and password, for the Wi-Fi QR code | step 6 (until then: only the page's QR code) |
 | an Android phone and an iPhone for the hand checks | steps 5–8 |
