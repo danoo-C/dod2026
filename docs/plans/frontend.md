@@ -317,7 +317,16 @@ Built:
 - Terminal: lines keyed by a running id the store gives them (`LogEntry`),
   each row memoised, so a batch renders only its new rows; newest at the
   bottom with `justify-content: flex-end`, no scrolling code; the banner from
-  the mockup. Times in the notebook's local time.
+  the mockup. Times in the notebook's local time. **Fixed after step 6**, found on the
+  real screen: the lines are flex items, which shrink by default, so with
+  more lines than fit every line was squeezed thinner instead of the oldest
+  leaving at the top. `.term-body > * { flex: none }` now, and the main
+  screen's grid row is `minmax(0, 1fr)`; `tests/styles.test.ts` reads both
+  rules from the stylesheets (jsdom does no layout), with Vitest processing
+  `?raw` CSS for it. The first report of it still showed the squeeze because the page was
+  `localhost:8000`, the last `./dod frontend-build`; `./dod sim` now sets
+  `DOD_PUBLIC_URL` to Vite's `http://localhost:5173` unless it is given, so
+  the backend's printed links point there.
 - LoadingScreen: 2 s to just under 4 s, the pause at 100 % included, so it
   is over within 4 s; `loading_started` once, also in StrictMode (refs).
 - `useServerClock()` and the new `useSend()` work outside a provider too (a

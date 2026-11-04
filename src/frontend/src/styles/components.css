@@ -109,6 +109,13 @@
   font: 400 var(--term-font, clamp(9.5px, 0.85vw, 11.5px)) / 1.45 var(--f-mono);
   color: #c9cde6;
 }
+.term-body > * {
+  /* Lines keep their height. Flex items shrink by default, which squeezed
+     every line thinner once there were more than fit; now the extra lines
+     overflow at the top (justify-content: flex-end) and are cut off there,
+     like a terminal that scrolled. */
+  flex: none;
+}
 .ln {
   white-space: pre;
   overflow: hidden;

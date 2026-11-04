@@ -128,6 +128,10 @@ ensure_node_modules() {
 # Ctrl-C stops both.
 dev_stack() {
     export DOD_SERIAL="$1"  # docker_args passes it into the backend's container
+    # The pages come from Vite here: the backend's printed links and the QR code
+    # point at it, not at port 8000 (that serves the last ./dod frontend-build,
+    # which is easy to open by mistake and then shows old code).
+    export DOD_PUBLIC_URL="${DOD_PUBLIC_URL:-http://localhost:$PORT_VITE}"
     docker_args
     node_args
     ensure_node_modules
