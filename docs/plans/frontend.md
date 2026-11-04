@@ -402,18 +402,62 @@ lands on the right screen:
 
 Done when:
 
-- [ ] Vitest: a control for every parameter kind, built from the real
+- [x] Vitest: a control for every parameter kind, built from the real
   `welcome` of `solid` and `rainbow`; the screen table above, with `you` and
   `state` messages as input; the slider sends ≤ 10 a second and the last
   value; a drawing round-trips through its 16 hex characters
 - [ ] by hand, `./dod sim` and two real phones (Android, iPhone): join →
   wait (the other has control) → loading → control → preset, every
   parameter, a drawing on the board's 8x8 preview → "Tvoj čas skončil" when
-  the time is up and the other waits → "Znova do radu"
+  the time is up and the other waits → "Znova do radu" – **needs phones**
+  (and WSL's networking change, step 1)
 - [ ] a reload, and 20 s with the phone locked, keep the place and the turn;
-  30 s without input loses it and the phone says so
-- [ ] the phone that isn't in control never shows controls, even after a
-  reload in the middle of the other's turn
+  30 s without input loses it and the phone says so – **needs phones**
+- [x] the phone that isn't in control never shows controls, even after a
+  reload in the middle of the other's turn (Vitest; by hand with the phones)
+
+Built:
+
+- `screens/Phone.tsx`: the header (logo and the live strip) and the screens
+  from the table; `screens/phoneScreen.ts`: `phoneScreen()` (pure) and
+  `usePhoneScreen()`. Its only memory: whether this page saw the turn start
+  – the loading screen runs only when it saw the phone wait before, so a
+  reload mid-turn goes straight to the controls – and whether it saw the
+  turn end ("Tvoj čas skončil"; after a reload, the welcome screen, which
+  has the same button). The memory is adjusted while rendering, not in an
+  effect, so the controls never flash for a frame before the loading screen.
+- waiting: the position, about how long (`waitSeconds()`: the rest of the
+  current turn, 0 if it is over, plus a full turn for each one ahead), "o
+  chvíľu" under 30 s, "Rad je na chvíľu pozastavený" while paused, the queue
+  line as dots and "ty" (at most 7, then "+N").
+- in control: the turn's ring (`Countdown` with `total`), "∞" and "Kým
+  niekto nepríde" when the time is up and nobody waits; tabs Ovládanie /
+  Hudba.
+- `apps/Manual/Presets.tsx` (a swatch per known id, a plain one for new
+  presets), `Params.tsx` (slider, colour, choice as a segmented control,
+  toggle as a switch; numbers with a decimal comma), `Drawing.tsx` (tap, or
+  drag with pointer capture and `elementFromPoint`, so a finger paints
+  across cells; the first pixel decides paint or erase; `touch-action: none`
+  so drawing doesn't scroll the page).
+- `lib/throttle.ts` (the first value at once, then one per 100 ms, the last
+  one always) and `lib/useLocalEdit.ts`: a control shows its own value while
+  changed, and the server's again 600 ms after the last change, so a slider
+  never jumps back under the finger and two screens still agree after.
+  `lib/matrix.ts` (encode / decode, shared with the preview), `lib/slovak.ts`
+  (minútu / minúty / minút, človek / ľudia / ľudí, decimal comma).
+- `apps/Music/SongList.tsx`: greyed out until downloaded or while no main
+  screen plays; picking one sends `play_song` and runs the loading screen.
+  Empty until backend step 8.
+- backend: `./dod schema` also writes `src/backend/schema/presets.json` –
+  `welcome.presets` exactly as the hub sends it – with a test that fails when
+  it is out of date; the frontend's tests build the controls from it, so a
+  new preset (step 7) is tested without touching the frontend.
+- `styles/phone.css`: the mockup's phone, ≥ 44 px tap targets, from 360 px
+  wide, centred at 480 px on a larger screen, no zoom on a double tap.
+- 144 frontend tests, ~3.5 s; four deliberate breaks (the loading screen on a
+  reload, a tap never erasing, no throttle, the estimate ignoring the people
+  ahead) each make the right tests fail.
+- checked by hand: the build; `./dod sim` serves the page and its modules.
 
 ### Step 6. The main screen (`/internal/main`)
 

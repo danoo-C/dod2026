@@ -1,6 +1,6 @@
 // The three screens, picked by the URL (tech-spec 5.1). Each one has its
-// WebSocket role (backend.md 9) and its own connection. Screens that aren't
-// built yet (plan steps 5-6) show the hello page.
+// WebSocket role (backend.md 9) and its own connection. The main screen
+// isn't built yet (plan step 6): it shows the hello page.
 import type { ReactNode } from "react";
 import type { RouteObject } from "react-router";
 
@@ -9,6 +9,7 @@ import { StandProvider } from "./api/useStand";
 import { ConnectionGate } from "./components/Connection";
 import { Hello } from "./screens/Hello";
 import { Logging } from "./screens/Logging";
+import { Phone } from "./screens/Phone";
 
 export const SCREENS: { path: string; role: Role }[] = [
   { path: "/", role: "phone" },
@@ -17,7 +18,7 @@ export const SCREENS: { path: string; role: Role }[] = [
 ];
 
 const SCREEN: Record<Role, () => ReactNode> = {
-  phone: () => <Hello role="phone" />,
+  phone: () => <Phone />,
   main: () => <Hello role="main" />,
   logging: () => <Logging />,
 };

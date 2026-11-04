@@ -6,7 +6,7 @@ import pytest
 from pydantic import ValidationError
 
 from dod.api import messages as m
-from dod.api.schema import FILE, build
+from dod.api.schema import FILE, PRESETS_FILE, build, build_presets
 from dod.bus import Bus
 from dod.settings import Settings
 from dod.state import State
@@ -79,6 +79,13 @@ def test_the_state_fits_its_message():
 def test_the_schema_file_is_up_to_date():
     assert FILE.exists(), "run ./dod schema"
     assert FILE.read_text(encoding="utf-8") == build(), "the messages changed: run ./dod schema"
+
+
+def test_the_presets_file_is_up_to_date():
+    # the frontend's tests build the phone's controls from it
+    assert PRESETS_FILE.exists(), "run ./dod schema"
+    assert PRESETS_FILE.read_text(encoding="utf-8") == build_presets(), "the presets changed: run ./dod schema"
+    assert [p["id"] for p in json.loads(build_presets())] == ["solid", "rainbow"]
 
 
 def test_the_schema_lists_every_message_with_its_type_required():

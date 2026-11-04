@@ -6,24 +6,15 @@ import type { CSSProperties } from "react";
 
 import type { Preview as PreviewMessage } from "../api/messages";
 import { useStand } from "../api/useStand";
+import { decodeMatrix, EMPTY } from "../lib/matrix";
 
-export const MATRIX_SIZE = 8;
 const MAX_BRIGHTNESS = 15; // the MAX7219's steps
 const PLACEHOLDER_LEDS = 10; // before the first preview: the strip's usual length, all off
 const DARK = 18; // r + g + b below this shows as an LED that is off
 
 export type PreviewSize = "small" | "large" | "phone";
 
-/** The 64 pixels, row by row, left to right; anything malformed is all off. */
-export function decodeMatrix(hex: string): boolean[] {
-  if (!/^[0-9a-fA-F]{16}$/.test(hex)) return Array<boolean>(MATRIX_SIZE * MATRIX_SIZE).fill(false);
-  const pixels: boolean[] = [];
-  for (let row = 0; row < MATRIX_SIZE; row++) {
-    const bits = parseInt(hex.slice(row * 2, row * 2 + 2), 16);
-    for (let x = 0; x < MATRIX_SIZE; x++) pixels.push((bits & (0x80 >> x)) !== 0);
-  }
-  return pixels;
-}
+export { decodeMatrix };
 
 /** The matrix's brightness, 0-15, as 0-1. */
 export function matrixLevel(brightness: number): number {
@@ -65,7 +56,7 @@ export function Preview({ preview, size = "small" }: { preview: PreviewMessage |
   return (
     <div className={`pv ${size}`}>
       <Strip leds={leds} />
-      <Matrix hex={preview?.matrix ?? "0000000000000000"} brightness={preview?.brightness ?? 0} />
+      <Matrix hex={preview?.matrix ?? EMPTY} brightness={preview?.brightness ?? 0} />
     </div>
   );
 }

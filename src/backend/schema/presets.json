@@ -1,0 +1,103 @@
+[
+  {
+    "id": "solid",
+    "name": "Farba",
+    "params": [
+      {
+        "name": "color",
+        "label": "Farba",
+        "kind": "color",
+        "default": "#ff2a6d",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "fade",
+        "label": "Prelínanie",
+        "kind": "toggle",
+        "default": false,
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "color2",
+        "label": "Druhá farba",
+        "kind": "color",
+        "default": "#05d9e8",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": null
+      },
+      {
+        "name": "fade_seconds",
+        "label": "Dĺžka prelínania (s)",
+        "kind": "slider",
+        "default": 3.0,
+        "min": 0.5,
+        "max": 10.0,
+        "step": 0.5,
+        "options": null
+      }
+    ]
+  },
+  {
+    "id": "rainbow",
+    "name": "Dúha",
+    "params": [
+      {
+        "name": "speed",
+        "label": "Rýchlosť",
+        "kind": "slider",
+        "default": 0.3,
+        "min": 0.05,
+        "max": 2.0,
+        "step": 0.05,
+        "options": null
+      },
+      {
+        "name": "width",
+        "label": "Počet dúh",
+        "kind": "slider",
+        "default": 1.0,
+        "min": 0.25,
+        "max": 3.0,
+        "step": 0.25,
+        "options": null
+      },
+      {
+        "name": "saturation",
+        "label": "Sýtosť",
+        "kind": "slider",
+        "default": 1.0,
+        "min": 0.0,
+        "max": 1.0,
+        "step": 0.05,
+        "options": null
+      },
+      {
+        "name": "direction",
+        "label": "Smer",
+        "kind": "choice",
+        "default": "right",
+        "min": null,
+        "max": null,
+        "step": null,
+        "options": [
+          {
+            "value": "right",
+            "label": "Doprava"
+          },
+          {
+            "value": "left",
+            "label": "Doľava"
+          }
+        ]
+      }
+    ]
+  }
+]

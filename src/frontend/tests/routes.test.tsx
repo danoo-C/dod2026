@@ -32,7 +32,7 @@ describe("routes", () => {
     act(() => FakeWebSocket.last.accept());
   });
 
-  it.each(SCREENS.filter((s) => s.role !== "logging"))("$path is still the hello page", async ({ path, role }) => {
+  it.each(SCREENS.filter((s) => s.role === "main"))("$path is still the hello page", async ({ path, role }) => {
     render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
     expect(screen.getByText(role)).toBeTruthy();
     expect(screen.getByTestId("status").textContent).toBe("Pripájam…");
