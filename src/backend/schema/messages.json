@@ -1,0 +1,1023 @@
+{
+  "title": "DOD 2026 WebSocket messages",
+  "description": "incoming: browser -> server, outgoing: server -> browser (docs/backend.md 9)",
+  "type": "object",
+  "properties": {
+    "incoming": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/JoinQueue"
+        },
+        {
+          "$ref": "#/$defs/LeaveQueue"
+        },
+        {
+          "$ref": "#/$defs/SetPreset"
+        },
+        {
+          "$ref": "#/$defs/SetParam"
+        },
+        {
+          "$ref": "#/$defs/SetMatrix"
+        },
+        {
+          "$ref": "#/$defs/PlaySong"
+        },
+        {
+          "$ref": "#/$defs/LoadingStarted"
+        },
+        {
+          "$ref": "#/$defs/Spectrum"
+        },
+        {
+          "$ref": "#/$defs/Player"
+        },
+        {
+          "$ref": "#/$defs/Admin"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "join_queue": "#/$defs/JoinQueue",
+          "leave_queue": "#/$defs/LeaveQueue",
+          "set_preset": "#/$defs/SetPreset",
+          "set_param": "#/$defs/SetParam",
+          "set_matrix": "#/$defs/SetMatrix",
+          "play_song": "#/$defs/PlaySong",
+          "loading_started": "#/$defs/LoadingStarted",
+          "spectrum": "#/$defs/Spectrum",
+          "player": "#/$defs/Player",
+          "admin": "#/$defs/Admin"
+        }
+      }
+    },
+    "outgoing": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/Welcome"
+        },
+        {
+          "$ref": "#/$defs/StateMessage"
+        },
+        {
+          "$ref": "#/$defs/You"
+        },
+        {
+          "$ref": "#/$defs/Preview"
+        },
+        {
+          "$ref": "#/$defs/Log"
+        },
+        {
+          "$ref": "#/$defs/Error"
+        }
+      ],
+      "discriminator": {
+        "propertyName": "type",
+        "mapping": {
+          "welcome": "#/$defs/Welcome",
+          "state": "#/$defs/StateMessage",
+          "you": "#/$defs/You",
+          "preview": "#/$defs/Preview",
+          "log": "#/$defs/Log",
+          "error": "#/$defs/Error"
+        }
+      }
+    }
+  },
+  "required": [
+    "incoming",
+    "outgoing"
+  ],
+  "$defs": {
+    "Admin": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "admin",
+          "title": "Type",
+          "type": "string"
+        },
+        "action": {
+          "enum": [
+            "skip",
+            "pause_queue",
+            "resume_queue",
+            "stop_song"
+          ],
+          "title": "Action",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "action"
+      ],
+      "title": "Admin",
+      "type": "object"
+    },
+    "Error": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "error",
+          "default": "error",
+          "title": "Type",
+          "type": "string"
+        },
+        "code": {
+          "enum": [
+            "invalid",
+            "forbidden",
+            "not_your_turn",
+            "no_player",
+            "unknown_song",
+            "rate_limited"
+          ],
+          "title": "Code",
+          "type": "string"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "code",
+        "message"
+      ],
+      "title": "Error",
+      "type": "object"
+    },
+    "HardwarePart": {
+      "additionalProperties": false,
+      "properties": {
+        "state": {
+          "title": "State",
+          "type": "string"
+        },
+        "simulated": {
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "fps": {
+          "title": "Fps",
+          "type": "number"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Error"
+        }
+      },
+      "required": [
+        "state",
+        "simulated",
+        "fps",
+        "error"
+      ],
+      "title": "HardwarePart",
+      "type": "object"
+    },
+    "JoinQueue": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "join_queue",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "JoinQueue",
+      "type": "object"
+    },
+    "LeaveQueue": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "leave_queue",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "LeaveQueue",
+      "type": "object"
+    },
+    "LoadingStarted": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "loading_started",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "LoadingStarted",
+      "type": "object"
+    },
+    "Log": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "log",
+          "default": "log",
+          "title": "Type",
+          "type": "string"
+        },
+        "lines": {
+          "items": {
+            "$ref": "#/$defs/LogLine"
+          },
+          "title": "Lines",
+          "type": "array"
+        }
+      },
+      "required": [
+        "type",
+        "lines"
+      ],
+      "title": "Log",
+      "type": "object"
+    },
+    "LogLine": {
+      "additionalProperties": false,
+      "properties": {
+        "t": {
+          "title": "T",
+          "type": "number"
+        },
+        "tag": {
+          "title": "Tag",
+          "type": "string"
+        },
+        "level": {
+          "title": "Level",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "t",
+        "tag",
+        "level",
+        "text"
+      ],
+      "title": "LogLine",
+      "type": "object"
+    },
+    "ManualPart": {
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "title": "Preset",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "maxLength": 40,
+                "type": "string"
+              }
+            ]
+          },
+          "title": "Params",
+          "type": "object"
+        },
+        "matrix": {
+          "enum": [
+            "icon",
+            "drawing"
+          ],
+          "title": "Matrix",
+          "type": "string"
+        },
+        "drawing": {
+          "title": "Drawing",
+          "type": "string"
+        }
+      },
+      "required": [
+        "preset",
+        "params",
+        "matrix",
+        "drawing"
+      ],
+      "title": "ManualPart",
+      "type": "object"
+    },
+    "MusicPart": {
+      "additionalProperties": false,
+      "properties": {
+        "song": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Song"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Title"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Started At"
+        },
+        "length": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Length"
+        },
+        "playing": {
+          "title": "Playing",
+          "type": "boolean"
+        },
+        "player_connected": {
+          "title": "Player Connected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "song",
+        "title",
+        "started_at",
+        "length",
+        "playing",
+        "player_connected"
+      ],
+      "title": "MusicPart",
+      "type": "object"
+    },
+    "OptionInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "value": {
+          "title": "Value",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        }
+      },
+      "required": [
+        "value",
+        "label"
+      ],
+      "title": "OptionInfo",
+      "type": "object"
+    },
+    "ParamInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "slider",
+            "color",
+            "choice",
+            "toggle"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "default": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "maxLength": 40,
+              "type": "string"
+            }
+          ],
+          "title": "Default"
+        },
+        "min": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Min"
+        },
+        "max": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Max"
+        },
+        "step": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Step"
+        },
+        "options": {
+          "anyOf": [
+            {
+              "items": {
+                "$ref": "#/$defs/OptionInfo"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Options"
+        }
+      },
+      "required": [
+        "name",
+        "label",
+        "kind",
+        "default",
+        "min",
+        "max",
+        "step",
+        "options"
+      ],
+      "title": "ParamInfo",
+      "type": "object"
+    },
+    "PlaySong": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "play_song",
+          "title": "Type",
+          "type": "string"
+        },
+        "song": {
+          "pattern": "^[A-Za-z0-9_-]{11}$",
+          "title": "Song",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "song"
+      ],
+      "title": "PlaySong",
+      "type": "object"
+    },
+    "Player": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "player",
+          "title": "Type",
+          "type": "string"
+        },
+        "song": {
+          "pattern": "^[A-Za-z0-9_-]{11}$",
+          "title": "Song",
+          "type": "string"
+        },
+        "position": {
+          "minimum": 0,
+          "title": "Position",
+          "type": "number"
+        },
+        "ended": {
+          "default": false,
+          "title": "Ended",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "song",
+        "position"
+      ],
+      "title": "Player",
+      "type": "object"
+    },
+    "PresetInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "params": {
+          "items": {
+            "$ref": "#/$defs/ParamInfo"
+          },
+          "title": "Params",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "params"
+      ],
+      "title": "PresetInfo",
+      "type": "object"
+    },
+    "Preview": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "preview",
+          "default": "preview",
+          "title": "Type",
+          "type": "string"
+        },
+        "leds": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Leds",
+          "type": "array"
+        },
+        "matrix": {
+          "title": "Matrix",
+          "type": "string"
+        },
+        "brightness": {
+          "title": "Brightness",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "type",
+        "leds",
+        "matrix",
+        "brightness"
+      ],
+      "title": "Preview",
+      "type": "object"
+    },
+    "QueuePart": {
+      "additionalProperties": false,
+      "properties": {
+        "controller": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Controller"
+        },
+        "turn_ends_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Turn Ends At"
+        },
+        "turn_over": {
+          "title": "Turn Over",
+          "type": "boolean"
+        },
+        "waiting": {
+          "title": "Waiting",
+          "type": "integer"
+        },
+        "paused": {
+          "title": "Paused",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "controller",
+        "turn_ends_at",
+        "turn_over",
+        "waiting",
+        "paused"
+      ],
+      "title": "QueuePart",
+      "type": "object"
+    },
+    "SetMatrix": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "set_matrix",
+          "title": "Type",
+          "type": "string"
+        },
+        "mode": {
+          "enum": [
+            "icon",
+            "drawing"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "drawing": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{16}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Drawing"
+        }
+      },
+      "required": [
+        "type",
+        "mode"
+      ],
+      "title": "SetMatrix",
+      "type": "object"
+    },
+    "SetParam": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "set_param",
+          "title": "Type",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "maxLength": 40,
+              "type": "string"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "type",
+        "name",
+        "value"
+      ],
+      "title": "SetParam",
+      "type": "object"
+    },
+    "SetPreset": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "set_preset",
+          "title": "Type",
+          "type": "string"
+        },
+        "preset": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Preset",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "preset"
+      ],
+      "title": "SetPreset",
+      "type": "object"
+    },
+    "SongInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "length": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Length"
+        },
+        "ready": {
+          "title": "Ready",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "length",
+        "ready"
+      ],
+      "title": "SongInfo",
+      "type": "object"
+    },
+    "Spectrum": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "spectrum",
+          "title": "Type",
+          "type": "string"
+        },
+        "bands": {
+          "items": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "maxItems": 32,
+          "minItems": 32,
+          "title": "Bands",
+          "type": "array"
+        },
+        "beat": {
+          "default": false,
+          "title": "Beat",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "type",
+        "bands"
+      ],
+      "title": "Spectrum",
+      "type": "object"
+    },
+    "StateMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "state",
+          "default": "state",
+          "title": "Type",
+          "type": "string"
+        },
+        "now": {
+          "title": "Now",
+          "type": "number"
+        },
+        "mode": {
+          "enum": [
+            "manual",
+            "music",
+            "idle"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "manual": {
+          "$ref": "#/$defs/ManualPart"
+        },
+        "music": {
+          "$ref": "#/$defs/MusicPart"
+        },
+        "queue": {
+          "$ref": "#/$defs/QueuePart"
+        },
+        "hardware": {
+          "$ref": "#/$defs/HardwarePart"
+        }
+      },
+      "required": [
+        "type",
+        "now",
+        "mode",
+        "manual",
+        "music",
+        "queue",
+        "hardware"
+      ],
+      "title": "StateMessage",
+      "type": "object"
+    },
+    "Welcome": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "welcome",
+          "default": "welcome",
+          "title": "Type",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "phone",
+            "main",
+            "logging"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "session": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Session"
+        },
+        "presets": {
+          "items": {
+            "$ref": "#/$defs/PresetInfo"
+          },
+          "title": "Presets",
+          "type": "array"
+        },
+        "songs": {
+          "items": {
+            "$ref": "#/$defs/SongInfo"
+          },
+          "title": "Songs",
+          "type": "array"
+        },
+        "public_url": {
+          "title": "Public Url",
+          "type": "string"
+        },
+        "turn_seconds": {
+          "title": "Turn Seconds",
+          "type": "number"
+        },
+        "inactive_seconds": {
+          "title": "Inactive Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "type",
+        "role",
+        "session",
+        "presets",
+        "songs",
+        "public_url",
+        "turn_seconds",
+        "inactive_seconds"
+      ],
+      "title": "Welcome",
+      "type": "object"
+    },
+    "You": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "you",
+          "default": "you",
+          "title": "Type",
+          "type": "string"
+        },
+        "session": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Session"
+        },
+        "position": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Position"
+        },
+        "in_control": {
+          "title": "In Control",
+          "type": "boolean"
+        },
+        "turn_ends_at": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Turn Ends At"
+        }
+      },
+      "required": [
+        "type",
+        "session",
+        "position",
+        "in_control",
+        "turn_ends_at"
+      ],
+      "title": "You",
+      "type": "object"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dod"
+version = "0.1.0"
+description = "Backend of the DOD 2026 stand: state, render loop, queue, API (docs/backend.md)"
+requires-python = ">=3.13"
+# hcl is the editable package in src/hcl, installed in the same pip call (Dockerfile)
+dependencies = [
+    "hcl",
+    "fastapi==0.162.0",
+    "uvicorn[standard]==0.54.0",
+    "pydantic==2.14.2",
+]
+
+[project.optional-dependencies]
+# pytest and pytest-timeout: the same pins as hcl's, both suites share one image
+dev = ["pytest==8.3.4", "pytest-timeout==2.3.1", "httpx2==2.16.0"]
+
+[tool.setuptools.packages.find]
+include = ["dod*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 15

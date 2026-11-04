@@ -1,0 +1,986 @@
+<!doctype html>
+<html lang="sk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Svetelná show DOD 2026</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&family=Manrope:wght@400;600;700&family=Unbounded:wght@500;700;800&display=swap">
+<style>
+/* Layout: a stand-control page. View switch on top; the notebook screen as a 16:9 frame
+   (terminal left ~30 %, video right); the phone as a device beside a list of its states. */
+:root {
+  --ink: #0c0d18;
+  --panel: #151728;
+  --panel-2: #1d2038;
+  --line: #2b2f50;
+  --fg: #eef0fb;
+  --muted: #9a9fc4;
+  --hot: #ff4d8d;
+  --warm: #ffb238;
+  --cool: #38d4ff;
+  --ok: #5fe3a1;
+  --vio: #a98bff;
+  --term: #06070d;
+  --bezel: #04050a;
+  --led-red: #ff3d2e;
+  --led-off: rgba(255, 61, 46, 0.11);
+  --led-dim: #1b1d2e;
+  --matrix-bg: #0d0707;
+  --qr-light: #eef0fb;
+  --qr-dark: #0c0d18;
+  --f-display: "Unbounded", "Arial Black", system-ui, sans-serif;
+  --f-body: "Manrope", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+  --r: 14px;
+  color-scheme: dark;
+}
+html, body { background: var(--ink); color: var(--fg); }
+body { margin: 0; font: 15px/1.5 var(--f-body); }
+[hidden] { display: none !important; }
+* { box-sizing: border-box; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--cool); outline-offset: 2px; }
+
+.page {
+  max-width: 1280px; margin: 0 auto;
+  padding-block: 22px 40px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 14px; }
+.brand { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.brand h1 {
+  margin: 0; font: 800 clamp(26px, 4vw, 40px)/1 var(--f-display); letter-spacing: -0.01em;
+  background: linear-gradient(90deg, var(--hot), var(--warm) 45%, var(--cool));
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-wrap: balance;
+}
+.brand p { margin: 0; color: var(--muted); max-width: 62ch; }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px; gap: 4px; flex-wrap: wrap; }
+.seg button {
+  border: 0; background: transparent; padding: 8px 16px; border-radius: 999px;
+  color: var(--muted); font-weight: 700; white-space: nowrap;
+}
+.seg button[aria-pressed="true"] { background: var(--fg); color: var(--ink); }
+.seg.small button { padding: 5px 12px; font-size: 13px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; color: var(--muted); font-size: 13px; }
+.toolbar label { display: inline-flex; align-items: center; gap: 8px; }
+.toolbar input[type="range"] { width: 120px; accent-color: var(--hot); }
+.ghost {
+  border: 1px solid var(--line); background: var(--panel); border-radius: 999px;
+  padding: 6px 14px; font-weight: 700; font-size: 13px;
+}
+.ghost:hover { border-color: var(--muted); }
+.caption { margin: 0; color: var(--muted); font-size: 13px; }
+.caption code, .states code { font-family: var(--f-mono); font-size: 12px; color: var(--fg); }
+
+/* ---------- notebook screen ---------- */
+.nb {
+  --term-w: 30%;
+  display: grid; grid-template-columns: var(--term-w) minmax(0, 1fr);
+  aspect-ratio: 16 / 9; width: 100%; max-width: 100%;
+  border: 10px solid var(--bezel); border-radius: 16px; overflow: hidden;
+  background: var(--ink); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+}
+.term { background: var(--term); display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1px solid var(--line); }
+.term-head {
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px;
+  font: 600 11px/1 var(--f-mono); color: var(--muted); border-bottom: 1px solid var(--line);
+}
+.term-head i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: inline-block; }
+.term-head i:nth-child(1) { background: var(--hot); }
+.term-head i:nth-child(2) { background: var(--warm); }
+.term-head i:nth-child(3) { background: var(--ok); }
+.term-head span { margin-left: 6px; }
+.term-body {
+  flex: 1; min-height: 0; overflow: hidden; padding: 8px 10px;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  font: 400 clamp(9.5px, 0.85vw, 11.5px)/1.45 var(--f-mono); color: #c9cde6;
+}
+.ln { white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.ln .ts { color: #565b80; }
+.ln .tg { font-weight: 600; white-space: pre; }
+.tg-hot { color: var(--hot); } .tg-warm { color: var(--warm); } .tg-cool { color: var(--cool); }
+.tg-ok { color: var(--ok); } .tg-vio { color: var(--vio); }
+.lv { white-space: pre; }
+.lv-INFO { color: var(--cool); } .lv-WARN { color: var(--warm); } .lv-DEBUG { color: #6d7299; } .lv-OK { color: var(--ok); }
+.banner { white-space: pre; color: var(--hot); line-height: 1.15; margin-bottom: 6px; overflow: hidden; }
+.cur { display: inline-block; width: 0.6em; height: 1.1em; background: var(--ok); vertical-align: text-bottom; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+.stage { display: grid; grid-template-rows: minmax(0, 1fr) auto; min-width: 0; min-height: 0; }
+.video { position: relative; min-height: 0; overflow: hidden; background: #0a0b16; }
+.video canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.video-meta {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 18px;
+  background: linear-gradient(transparent, rgba(6, 7, 13, 0.85));
+  display: flex; flex-direction: column; gap: 2px;
+}
+.chip {
+  align-self: flex-start; font: 700 10px/1 var(--f-mono); letter-spacing: 0.12em;
+  padding: 4px 7px; border-radius: 4px; background: var(--hot); color: var(--ink);
+}
+.video-meta h2 { margin: 4px 0 0; font: 700 clamp(15px, 2vw, 24px)/1.15 var(--f-display); }
+.video-meta p { margin: 0; color: var(--muted); font-size: 12px; }
+
+.idle {
+  min-height: 0; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center; gap: 18px; padding: clamp(12px, 2.5vw, 32px);
+  background: radial-gradient(circle at 20% 30%, rgba(255, 77, 141, 0.14), transparent 55%),
+              radial-gradient(circle at 85% 80%, rgba(56, 212, 255, 0.12), transparent 50%), #0a0b16;
+}
+.idle h2 { margin: 0 0 10px; font: 800 clamp(16px, 2.6vw, 34px)/1.1 var(--f-display); text-wrap: balance; }
+.idle p { margin: 0 0 14px; color: var(--muted); font-size: clamp(11px, 1.1vw, 14px); }
+.idle .pv-big { display: flex; flex-direction: column; gap: 12px; align-items: flex-start; }
+.idle .qrs { display: flex; gap: 14px; }
+
+.bar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px;
+  padding: 10px 14px; background: var(--panel); border-top: 1px solid var(--line);
+}
+.lbl { font: 700 10px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.np { flex: 1 1 200px; min-width: 0; display: flex; flex-direction: column; gap: 5px; }
+.np b { font-size: clamp(12px, 1.2vw, 15px); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prog { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.prog i { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--hot), var(--warm)); }
+.time { font: 400 11px/1 var(--f-mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+.pv { display: flex; align-items: center; gap: 10px; }
+.q { display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 11px; color: var(--muted); }
+.q .big { font: 800 22px/1 var(--f-display); color: var(--fg); font-variant-numeric: tabular-nums; }
+.qr { display: flex; flex-direction: column; align-items: center; gap: 3px; font: 600 10px/1 var(--f-mono); color: var(--muted); }
+.qr canvas { width: var(--qr, 64px); height: var(--qr, 64px); image-rendering: pixelated; border-radius: 4px; background: var(--qr-light); }
+
+/* strip + matrix previews */
+.strip { display: inline-flex; gap: var(--led-gap, 5px); padding: 6px 9px; background: #07080f; border: 1px solid var(--line); border-radius: 999px; }
+.led { width: var(--led, 11px); height: var(--led, 11px); border-radius: 50%; background: var(--led-dim); }
+.matrix {
+  display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--px-gap, 2px);
+  width: var(--mx, 58px); aspect-ratio: 1; max-width: 100%; padding: 4px;
+  background: var(--matrix-bg); border: 1px solid var(--line); border-radius: 6px;
+}
+.px { border-radius: 50%; background: var(--led-off); }
+.px.on { background: var(--led-red); box-shadow: 0 0 5px var(--led-red); }
+.big-pv { --led: clamp(14px, 2.2vw, 26px); --led-gap: 8px; --mx: clamp(90px, 13vw, 170px); --px-gap: 4px; }
+
+/* ---------- phone ---------- */
+.phone-layout { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 28px; align-items: start; }
+.states { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.states h2 { margin: 0; font: 700 20px/1.2 var(--f-display); }
+.states > p { margin: 0 0 6px; color: var(--muted); max-width: 60ch; }
+.state {
+  display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 12px; text-align: left;
+  padding: 12px 14px; border-radius: var(--r); border: 1px solid var(--line); background: var(--panel);
+}
+.state .n { grid-row: span 2; font: 800 14px/1 var(--f-display); color: var(--muted); padding-top: 3px; }
+.state b { font-weight: 700; }
+.state span { color: var(--muted); font-size: 13px; }
+.state[aria-pressed="true"] { border-color: var(--hot); background: var(--panel-2); }
+.state[aria-pressed="true"] .n { color: var(--hot); }
+
+.phone {
+  width: 360px; max-width: 100%; height: 740px; border: 10px solid var(--bezel); border-radius: 44px;
+  background: var(--bezel); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5); overflow: hidden; position: relative;
+}
+.ph {
+  height: 100%; overflow-y: auto; border-radius: 34px; position: relative;
+  background: radial-gradient(circle at 10% 0%, rgba(255, 77, 141, 0.16), transparent 45%),
+              radial-gradient(circle at 100% 30%, rgba(56, 212, 255, 0.10), transparent 40%), var(--ink);
+  display: flex; flex-direction: column;
+}
+.ph-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 22px 18px 10px; }
+.logo { font: 800 15px/1 var(--f-display); letter-spacing: 0.02em; }
+.logo em { font-style: normal; color: var(--hot); }
+.ph-top .strip { --led: 9px; --led-gap: 4px; padding: 5px 7px; }
+.scr { padding: 6px 18px 22px; display: flex; flex-direction: column; gap: 16px; flex: 1; }
+
+.pos { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding-top: 18px; }
+.pos .num {
+  font: 800 108px/0.9 var(--f-display);
+  background: linear-gradient(160deg, var(--hot), var(--warm)); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.pos h3 { margin: 0; font: 700 22px/1.2 var(--f-display); }
+.pos p { margin: 0; color: var(--muted); }
+.qline { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+.qline span { padding: 4px 10px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font: 600 12px/1.2 var(--f-mono); color: var(--muted); }
+.qline span.me { border-color: var(--hot); color: var(--fg); }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.card h4 { margin: 0; font: 700 12px/1 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.wide-btn { width: 100%; padding: 14px; border-radius: 999px; border: 0; font-weight: 800; font-family: var(--f-display); font-size: 15px; }
+.wide-btn.primary { background: linear-gradient(90deg, var(--hot), var(--warm)); color: var(--ink); }
+.wide-btn.quiet { background: transparent; border: 1px solid var(--line); color: var(--muted); font-family: var(--f-body); }
+
+/* loading */
+.load { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; text-align: center; padding: 10px 6px 30px; }
+.ring { width: 170px; height: 170px; position: relative; }
+.ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.ring .pct { position: absolute; inset: 0; display: grid; place-items: center; font: 800 34px/1 var(--f-display); font-variant-numeric: tabular-nums; }
+.ring .spin { position: absolute; inset: -10px; border-radius: 50%; border: 2px dashed var(--line); animation: spin 6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.steps { display: flex; flex-direction: column; gap: 6px; width: 100%; text-align: left; font-size: 13px; }
+.steps div { display: flex; gap: 8px; color: var(--muted); }
+.steps div.done { color: var(--fg); }
+.steps div.done::before { content: "✓"; color: var(--ok); font-weight: 700; }
+.steps div.now::before { content: "›"; color: var(--warm); font-weight: 700; }
+.steps div.todo::before { content: "·"; }
+.hex { font: 400 11px/1.4 var(--f-mono); color: #565b80; word-break: break-all; height: 46px; overflow: hidden; width: 100%; }
+
+/* control */
+.turn { display: flex; align-items: center; gap: 14px; }
+.timer { width: 64px; height: 64px; position: relative; flex: none; }
+.timer svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.timer b { position: absolute; inset: 0; display: grid; place-items: center; font: 700 14px/1 var(--f-mono); font-variant-numeric: tabular-nums; }
+.turn h3 { margin: 0; font: 800 20px/1.1 var(--f-display); }
+.turn p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+.tabs { display: grid; grid-template-columns: 1fr 1fr; background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px; }
+.tabs button { border: 0; background: transparent; padding: 9px; border-radius: 999px; font-weight: 700; color: var(--muted); }
+.tabs button[aria-pressed="true"] { background: var(--fg); color: var(--ink); }
+.presets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.preset {
+  border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 8px;
+  display: flex; flex-direction: column; gap: 6px; font-weight: 700; font-size: 13px; text-align: left;
+}
+.preset i { display: block; height: 30px; border-radius: 7px; }
+.preset[aria-pressed="true"] { border-color: var(--fg); box-shadow: 0 0 0 1px var(--fg); }
+.sw-duha { background: linear-gradient(90deg, #ff4d4d, #ffb238, #f4ff5c, #5fe3a1, #38d4ff, #a98bff); }
+.sw-ohen { background: linear-gradient(90deg, #3a0700, #d43a00, #ff8a1f, #ffd36b); }
+.sw-policia { background: linear-gradient(90deg, #ff2b4a 50%, #2b6bff 50%); }
+.sw-dych { background: radial-gradient(circle, var(--hot), #2a0f1c 75%); }
+.sw-kometa { background: linear-gradient(90deg, transparent, rgba(255, 77, 141, 0.3) 50%, var(--hot) 85%, #fff); }
+.sw-strobo { background: repeating-linear-gradient(90deg, #fff 0 6px, #111 6px 14px); }
+.slider { display: grid; grid-template-columns: 80px minmax(0, 1fr) 44px; align-items: center; gap: 10px; font-size: 13px; }
+.slider input { width: 100%; accent-color: var(--hot); }
+.slider output { font: 600 12px/1 var(--f-mono); color: var(--muted); text-align: right; font-variant-numeric: tabular-nums; }
+.color-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; }
+.color-row input { width: 46px; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-2); padding: 2px; }
+.note { margin: 0; font-size: 12px; color: var(--muted); }
+.draw { display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px; padding: 8px; background: var(--matrix-bg); border-radius: 10px; }
+.cell { aspect-ratio: 1; border-radius: 50%; border: 0; background: var(--led-off); padding: 0; }
+.cell[aria-pressed="true"] { background: var(--led-red); box-shadow: 0 0 6px var(--led-red); }
+.draw-actions { display: flex; gap: 8px; }
+.draw-actions button { flex: 1; }
+.songs { display: flex; flex-direction: column; gap: 8px; }
+.song {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; text-align: left;
+  border: 1px solid var(--line); background: var(--panel-2); border-radius: 12px; padding: 10px 12px;
+}
+.song b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.song span { color: var(--muted); font-size: 12px; }
+.song .d { grid-row: span 2; align-self: center; font: 600 12px/1 var(--f-mono); color: var(--muted); }
+.song[aria-pressed="true"] { border-color: var(--hot); }
+.song[aria-pressed="true"] .d { color: var(--hot); }
+.song:disabled { opacity: 0.45; cursor: not-allowed; }
+.playing { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: rgba(255, 77, 141, 0.12); border: 1px solid rgba(255, 77, 141, 0.4); font-size: 13px; }
+.eq { display: flex; gap: 2px; align-items: end; height: 16px; }
+.eq i { width: 3px; background: var(--hot); border-radius: 1px; height: 40%; }
+
+.end { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 14px; padding-bottom: 30px; }
+.end .face { font: 800 64px/1 var(--f-display); color: var(--warm); }
+.end h3 { margin: 0; font: 800 24px/1.15 var(--f-display); }
+.end p { margin: 0; color: var(--muted); max-width: 30ch; }
+
+/* narrow screens */
+@media (max-width: 860px) {
+  .nb { grid-template-columns: minmax(0, 1fr); aspect-ratio: auto; }
+  .term { height: 230px; border-right: 0; border-bottom: 1px solid var(--line); }
+  .video { aspect-ratio: 16 / 9; }
+  .idle { grid-template-columns: minmax(0, 1fr); }
+  .phone-layout { grid-template-columns: minmax(0, 1fr); }
+  .phone { margin: 0 auto; }
+  .toolbar .term-w { display: none; }
+}
+@media (max-width: 420px) {
+  .phone { height: 700px; border-width: 6px; border-radius: 34px; }
+  .ph { border-radius: 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cur, .ring .spin { animation: none; }
+}
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header class="top">
+    <div class="brand">
+      <h1>DOD 2026 · Svetelná show</h1>
+      <p>Klikateľná ukážka rozhrania. Skladby, rad a logy sú vymyslené, v hotovej aplikácii ich posiela backend. Pásik a 8×8 mriežka tu bežia v simulácii.</p>
+    </div>
+    <div class="seg" role="group" aria-label="Obrazovka">
+      <button type="button" id="v-notebook" data-view="notebook" aria-pressed="true">Notebook</button>
+      <button type="button" id="v-phone" data-view="phone" aria-pressed="false">Mobil návštevníka</button>
+    </div>
+  </header>
+
+  <!-- ================= NOTEBOOK ================= -->
+  <section id="view-notebook" class="page-view" aria-label="Obrazovka notebooku">
+    <div class="toolbar" style="margin-bottom: 10px">
+      <span>Pravá strana:</span>
+      <div class="seg small" role="group" aria-label="Pravá strana">
+        <button type="button" id="nb-play" aria-pressed="true">Hrá skladba</button>
+        <button type="button" id="nb-idle" aria-pressed="false">Nič nehrá</button>
+      </div>
+      <label class="term-w">Šírka terminálu
+        <input type="range" id="term-width" min="25" max="33" value="30">
+        <output id="term-width-out">30 %</output>
+      </label>
+      <button type="button" class="ghost" id="burst">Spustiť dávku logov</button>
+    </div>
+
+    <div class="nb" id="nb">
+      <div class="term">
+        <div class="term-head"><i></i><i></i><i></i><span>dod-engine — tty0</span></div>
+        <div class="term-body" id="term"><div class="cur-line"><span class="cur"></span></div></div>
+      </div>
+      <div class="stage">
+        <div class="video" id="video">
+          <canvas id="vcanvas"></canvas>
+          <div class="video-meta">
+            <span class="chip">VIDEO</span>
+            <h2 id="v-title">Darude – Sandstorm</h2>
+            <p>V aplikácii tu hrá stiahnuté video skladby. Svetlá reagujú na jeho zvuk.</p>
+          </div>
+        </div>
+        <div class="idle" id="idle" hidden>
+          <div>
+            <h2>Naskenuj kód a ovládaj svetlá</h2>
+            <p>Pripoj sa na Wi-Fi stánku, otvor stránku a postav sa do radu.</p>
+            <div class="pv-big big-pv">
+              <div class="strip" data-strip></div>
+              <div class="matrix" data-matrix></div>
+            </div>
+          </div>
+          <div class="qrs">
+            <div class="qr" style="--qr: clamp(84px, 11vw, 150px)"><canvas data-qr="wifi"></canvas><span>1. Wi-Fi</span></div>
+            <div class="qr" style="--qr: clamp(84px, 11vw, 150px)"><canvas data-qr="url"></canvas><span>2. Stránka</span></div>
+          </div>
+        </div>
+        <div class="bar">
+          <div class="np">
+            <span class="lbl" id="np-label">Práve hrá</span>
+            <b id="np-title">Darude – Sandstorm</b>
+            <div class="prog"><i id="np-prog"></i></div>
+            <span class="time" id="np-time">0:00 / 3:45</span>
+          </div>
+          <div class="pv">
+            <div class="strip" data-strip></div>
+            <div class="matrix" data-matrix></div>
+          </div>
+          <div class="q"><span class="lbl">V rade</span><b class="big" id="q-count">3</b><span>ľudia</span></div>
+          <div class="qr" id="bar-qr1"><canvas data-qr="wifi"></canvas><span>1. Wi-Fi</span></div>
+          <div class="qr" id="bar-qr2"><canvas data-qr="url"></canvas><span>2. Stránka</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="caption" style="margin-top: 10px">Obrazovka notebooku, <code>/internal/main</code>. Vľavo falošný terminál (anglicky), vpravo video skladby a lišta s tým, čo hrá, radom a QR kódmi.</p>
+  </section>
+
+  <!-- ================= PHONE ================= -->
+  <section id="view-phone" class="page-view" aria-label="Mobil návštevníka" hidden>
+    <div class="phone-layout">
+      <div class="states">
+        <h2>Mobil návštevníka</h2>
+        <p>Stránka <code>/</code> po naskenovaní QR kódu. Mobil je len ovládač, hudba hrá z notebooku pri stánku.</p>
+        <button type="button" class="state" id="st-queue" data-state="queue" aria-pressed="true"><span class="n">1</span><b>Čakanie v rade</b><span>Návštevník vidí svoje poradie a živý náhľad svetiel.</span></button>
+        <button type="button" class="state" id="st-loading" data-state="loading" aria-pressed="false"><span class="n">2</span><b>Načítavanie</b><span>Falošná načítavacia obrazovka, trvá asi 3 sekundy.</span></button>
+        <button type="button" class="state" id="st-control" data-state="control" aria-pressed="false"><span class="n">3</span><b>Tvoj ťah</b><span>Presety, nastavenia, kreslenie na 8×8 a výber skladby. Náhľad hore reaguje.</span></button>
+        <button type="button" class="state" id="st-ended" data-state="ended" aria-pressed="false"><span class="n">4</span><b>Čas skončil</b><span>Po 3 minútach alebo jednej skladbe, ak niekto čaká.</span></button>
+      </div>
+
+      <div class="phone">
+        <div class="ph" id="ph">
+          <div class="ph-top">
+            <span class="logo">DOD<em>·</em>26</span>
+            <div class="strip" data-strip></div>
+          </div>
+
+          <!-- queue -->
+          <div class="scr" data-scr="queue">
+            <div class="pos">
+              <span class="num" id="q-pos">3.</span>
+              <h3>Si v poradí</h3>
+              <p id="q-wait">Na rade si približne o 6 minút</p>
+            </div>
+            <div class="qline" aria-label="Rad">
+              <span>hrá teraz</span><span>#7f3a</span><span class="me">ty</span><span>#b210</span>
+            </div>
+            <div class="card">
+              <h4>Práve na stánku</h4>
+              <div class="row">
+                <div class="strip" data-strip></div>
+                <div class="matrix" data-matrix style="--mx: 64px"></div>
+              </div>
+              <p class="note" id="q-now">Hrá: Darude – Sandstorm</p>
+            </div>
+            <button type="button" class="wide-btn quiet" id="leave">Odísť z radu</button>
+          </div>
+
+          <!-- loading -->
+          <div class="scr" data-scr="loading" hidden>
+            <div class="load">
+              <div class="ring">
+                <span class="spin"></span>
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <circle cx="50" cy="50" r="44" fill="none" stroke="var(--line)" stroke-width="6"></circle>
+                  <circle id="ring-arc" cx="50" cy="50" r="44" fill="none" stroke="url(#rg)" stroke-width="6" stroke-linecap="round" stroke-dasharray="276.5" stroke-dashoffset="276.5"></circle>
+                  <defs><linearGradient id="rg"><stop offset="0" stop-color="var(--hot)"></stop><stop offset="1" stop-color="var(--warm)"></stop></linearGradient></defs>
+                </svg>
+                <span class="pct" id="ring-pct">0 %</span>
+              </div>
+              <div class="steps" id="steps"></div>
+              <div class="hex" id="hex"></div>
+            </div>
+          </div>
+
+          <!-- control -->
+          <div class="scr" data-scr="control" hidden>
+            <div class="turn">
+              <div class="timer">
+                <svg viewBox="0 0 100 100" aria-hidden="true">
+                  <circle cx="50" cy="50" r="42" fill="none" stroke="var(--line)" stroke-width="9"></circle>
+                  <circle id="timer-arc" cx="50" cy="50" r="42" fill="none" stroke="var(--hot)" stroke-width="9" stroke-linecap="round" stroke-dasharray="263.9" stroke-dashoffset="0"></circle>
+                </svg>
+                <b id="timer-txt">3:00</b>
+              </div>
+              <div>
+                <h3>Tvoj ťah!</h3>
+                <p>Ovládaš svetlá na stánku</p>
+              </div>
+            </div>
+            <div class="tabs" role="group" aria-label="Režim">
+              <button type="button" id="tab-ovl" data-tab="ovl" aria-pressed="true">Ovládanie</button>
+              <button type="button" id="tab-hud" data-tab="hud" aria-pressed="false">Hudba</button>
+            </div>
+
+            <div data-pane="ovl" class="scr" style="padding: 0">
+              <div class="card">
+                <h4>Preset</h4>
+                <div class="presets" id="presets"></div>
+              </div>
+              <div class="card">
+                <h4>Nastavenia</h4>
+                <div class="slider"><label for="speed">Rýchlosť</label><input type="range" id="speed" min="0.2" max="3" step="0.1" value="1"><output id="speed-out">1.0×</output></div>
+                <div class="slider"><label for="bright">Jas</label><input type="range" id="bright" min="10" max="100" step="5" value="85"><output id="bright-out">85 %</output></div>
+                <div class="color-row"><label for="color">Farba</label><input type="color" id="color" value="#ff4d8d"></div>
+                <p class="note" id="color-note">Tento preset má vlastné farby.</p>
+              </div>
+              <div class="card">
+                <h4>Kresli na 8×8</h4>
+                <div class="draw" id="draw" aria-label="Mriežka 8×8"></div>
+                <div class="draw-actions">
+                  <button type="button" class="ghost" id="draw-clear">Vymazať</button>
+                  <button type="button" class="ghost" id="draw-icon">Ikona presetu</button>
+                </div>
+              </div>
+            </div>
+
+            <div data-pane="hud" class="scr" style="padding: 0" hidden>
+              <div class="playing" id="playing-card"><span class="eq" id="eq"><i></i><i></i><i></i><i></i></span><span id="playing-txt">Hrá: Darude – Sandstorm</span></div>
+              <div class="songs" id="songs"></div>
+              <p class="note">Hudba hrá z reproduktora pri stánku. Šedé skladby ešte nie sú stiahnuté.</p>
+            </div>
+          </div>
+
+          <!-- ended -->
+          <div class="scr" data-scr="ended" hidden>
+            <div class="end">
+              <span class="face">:(</span>
+              <h3>Tvoj čas skončil</h3>
+              <p>Ďalší v rade už čaká. Môžeš sa postaviť znova na koniec radu.</p>
+              <button type="button" class="wide-btn primary" id="requeue">Znova do radu</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script>
+(() => {
+  const $ = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const css = getComputedStyle(document.documentElement);
+  const tok = (n) => css.getPropertyValue(n).trim();
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const PRESETS = [
+    { id: "duha", name: "Dúha", color: false },
+    { id: "ohen", name: "Oheň", color: false },
+    { id: "policia", name: "Polícia", color: false },
+    { id: "dych", name: "Dýchanie", color: true },
+    { id: "kometa", name: "Kométa", color: true },
+    { id: "strobo", name: "Stroboskop", color: false },
+  ];
+  const SONGS = [
+    { t: "Sandstorm", a: "Darude", d: "3:45", ok: true },
+    { t: "Never Gonna Give You Up", a: "Rick Astley", d: "3:33", ok: true },
+    { t: "L'Amour Toujours", a: "Gigi D'Agostino", d: "4:02", ok: true },
+    { t: "Blue (Da Ba Dee)", a: "Eiffel 65", d: "3:40", ok: true },
+    { t: "Take On Me", a: "a-ha", d: "3:46", ok: true },
+    { t: "Don't Stop Me Now", a: "Queen", d: "3:29", ok: false },
+  ];
+  const secs = (d) => { const [m, s] = d.split(":").map(Number); return m * 60 + s; };
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+
+  const S = {
+    view: "notebook", playing: true, song: 0, songPos: 0,
+    preset: "duha", speed: 1, bright: 0.85, color: "#ff4d8d",
+    matrixMode: "icon", draw: new Array(64).fill(0),
+    phone: "queue", tab: "ovl", turnLeft: 180, qCount: 3,
+  };
+
+  /* ---------- colour helpers ---------- */
+  function hsv(h, s, v) {
+    h = ((h % 360) + 360) % 360;
+    const c = v * s, x = c * (1 - Math.abs(((h / 60) % 2) - 1)), m = v - c;
+    let r = 0, g = 0, b = 0;
+    if (h < 60) [r, g, b] = [c, x, 0]; else if (h < 120) [r, g, b] = [x, c, 0];
+    else if (h < 180) [r, g, b] = [0, c, x]; else if (h < 240) [r, g, b] = [0, x, c];
+    else if (h < 300) [r, g, b] = [x, 0, c]; else [r, g, b] = [c, 0, x];
+    return [(r + m) * 255, (g + m) * 255, (b + m) * 255];
+  }
+  const hex2rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const scale = (c, k) => c.map((v) => Math.max(0, Math.min(255, v * k)));
+  const clamp01 = (v) => Math.max(0, Math.min(1, v));
+
+  /* ---------- fake audio analysis ---------- */
+  const BEAT = 60 / 128;
+  function fft(t) {
+    const ph = (t % BEAT) / BEAT, beat = Math.exp(-ph * 6);
+    const b = [];
+    for (let k = 0; k < 8; k++) {
+      let v = 0.22 + 0.2 * Math.sin(t * (1.1 + k * 0.53) + k * 1.7) + 0.14 * Math.sin(t * (2.9 + k * 0.31));
+      v += beat * (k < 3 ? 0.7 - k * 0.12 : 0.18);
+      b.push(clamp01(v));
+    }
+    return { b, beat, count: Math.floor(t / BEAT) };
+  }
+
+  /* ---------- the "engine": what the backend would render ---------- */
+  function stripColors(t) {
+    const out = [];
+    if (S.playing) {
+      const f = fft(t), base = t * 18 + f.count * 47;
+      for (let i = 0; i < 10; i++) {
+        const v = 0.2 + 0.8 * f.b[Math.floor((i * 8) / 10)];
+        out.push(hsv(base + i * 14, 0.9, v * S.bright));
+      }
+      return out;
+    }
+    const tt = t * S.speed, col = hex2rgb(S.color);
+    for (let i = 0; i < 10; i++) {
+      let c;
+      switch (S.preset) {
+        case "duha": c = hsv(i * 36 + tt * 90, 1, 1); break;
+        case "ohen": {
+          const f = clamp01(0.6 + 0.25 * Math.sin(tt * 7 + i * 2.1) + 0.15 * Math.sin(tt * 13.3 + i * 5.7));
+          c = hsv(4 + 34 * f * f, 1, 0.35 + 0.65 * f); break;
+        }
+        case "policia": {
+          const side = Math.floor(tt * 2) % 2, pulse = (tt * 8) % 2 < 1;
+          const on = (i < 5) === (side === 0) && pulse;
+          c = on ? (i < 5 ? [255, 30, 60] : [40, 90, 255]) : [0, 0, 0]; break;
+        }
+        case "dych": c = scale(col, 0.12 + 0.88 * (0.5 - 0.5 * Math.cos(tt * 2))); break;
+        case "kometa": {
+          const pos = ((tt * 6) % 15) - 2, d = pos - i;
+          const v = d >= 0 && d < 4 ? Math.pow(1 - d / 4, 2) : 0;
+          c = d >= 0 && d < 0.6 ? [255, 255, 255] : scale(col, v); break;
+        }
+        case "strobo": {
+          const rate = Math.min(3, 1.5 * S.speed); // flash limit: at most 3 per second
+          c = (t * rate) % 1 < 0.12 ? [255, 255, 255] : [0, 0, 0]; break;
+        }
+        default: c = [0, 0, 0];
+      }
+      out.push(scale(c, S.bright));
+    }
+    return out;
+  }
+
+  const ICONS = {
+    duha: ["00000000", "00111100", "01111110", "11100111", "11000011", "10000001", "00000000", "00000000"],
+    ohen: ["00010000", "00011000", "00111000", "01111100", "01101110", "11100111", "11111111", "01111110"],
+    strobo: ["00001100", "00011000", "00110000", "01111110", "00001100", "00011000", "00110000", "00100000"],
+  };
+  function matrixPixels(t) {
+    const px = new Array(64).fill(0);
+    const set = (x, y) => { if (x >= 0 && x < 8 && y >= 0 && y < 8) px[y * 8 + x] = 1; };
+    if (S.playing) {
+      const f = fft(t);
+      for (let x = 0; x < 8; x++) { const h = Math.round(f.b[x] * 8); for (let y = 8 - h; y < 8; y++) set(x, y); }
+      return px;
+    }
+    if (S.matrixMode === "draw") return S.draw.slice();
+    const tt = t * S.speed;
+    const icon = (rows) => rows.forEach((r, y) => [...r].forEach((c, x) => { if (c === "1") set(x, y); }));
+    switch (S.preset) {
+      case "duha": icon(ICONS.duha); break;
+      case "ohen": icon(ICONS.ohen); for (let x = 0; x < 8; x++) if (Math.sin(tt * 9 + x * 2.3) > 0.55) set(x, 2); break;
+      case "policia": { const side = Math.floor(tt * 2) % 2; for (let y = 1; y < 7; y++) for (let x = 0; x < 4; x++) set(side ? x + 4 : x, y); break; }
+      case "dych": {
+        const r = 0.6 + 3 * (0.5 - 0.5 * Math.cos(tt * 2));
+        for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) if (Math.abs(Math.hypot(x - 3.5, y - 3.5) - r) < 0.75) set(x, y);
+        break;
+      }
+      case "kometa": { const p = (tt * 6) % 12; for (let k = 0; k < 4; k++) { const q = Math.floor(p) - k; set(q, q); } break; }
+      case "strobo": { const rate = Math.min(3, 1.5 * S.speed); if ((t * rate) % 1 < 0.12) px.fill(1); else icon(ICONS.strobo); break; }
+    }
+    return px;
+  }
+
+  /* ---------- build previews ---------- */
+  $$("[data-strip]").forEach((el) => { for (let i = 0; i < 10; i++) el.appendChild(document.createElement("span")).className = "led"; });
+  $$("[data-matrix]").forEach((el) => { for (let i = 0; i < 64; i++) el.appendChild(document.createElement("span")).className = "px"; });
+
+  function paint(t) {
+    const cols = stripColors(t), px = matrixPixels(t);
+    $$("[data-strip]").forEach((el) => {
+      if (!el.offsetParent) return;
+      el.childNodes.forEach((led, i) => {
+        const [r, g, b] = cols[i];
+        if (r + g + b < 18) { led.style.background = ""; led.style.boxShadow = ""; return; }
+        led.style.background = `rgb(${r | 0},${g | 0},${b | 0})`;
+        led.style.boxShadow = `0 0 10px rgba(${r | 0},${g | 0},${b | 0},0.75)`;
+      });
+    });
+    $$("[data-matrix]").forEach((el) => {
+      if (!el.offsetParent) return;
+      el.childNodes.forEach((p, i) => p.classList.toggle("on", !!px[i]));
+    });
+    $$("#eq i").forEach((bar, i) => { bar.style.height = S.playing ? `${20 + 80 * fft(t).b[i * 2]}%` : "20%"; });
+    if (S.view === "notebook" && S.playing) drawVideo(t, cols);
+  }
+
+  /* ---------- video stand-in ---------- */
+  const cv = $("#vcanvas"), ctx = cv.getContext("2d");
+  function drawVideo(t, cols) {
+    const dpr = Math.min(1.5, devicePixelRatio || 1);
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    if (cv.width !== Math.round(w * dpr)) { cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr); }
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const f = fft(t);
+    const g = ctx.createLinearGradient(0, 0, w, h);
+    g.addColorStop(0, "#0b0c1a"); g.addColorStop(1, "#1c0f2c");
+    ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+    const [r0, g0, b0] = cols[0];
+    ctx.beginPath();
+    ctx.arc(w * 0.5, h * 0.42, h * (0.16 + 0.12 * f.beat), 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${r0 | 0},${g0 | 0},${b0 | 0},0.18)`; ctx.fill();
+    const bw = w / 10;
+    for (let i = 0; i < 10; i++) {
+      const [r, gg, b] = cols[i];
+      const bh = h * (0.12 + 0.55 * f.b[Math.floor((i * 8) / 10)]);
+      const x = i * bw + bw * 0.18, y = h - bh;
+      const lg = ctx.createLinearGradient(0, y, 0, h);
+      lg.addColorStop(0, `rgba(${r | 0},${gg | 0},${b | 0},0.95)`);
+      lg.addColorStop(1, `rgba(${r | 0},${gg | 0},${b | 0},0.05)`);
+      ctx.fillStyle = lg; ctx.fillRect(x, y, bw * 0.64, bh);
+    }
+  }
+
+  /* ---------- now playing ---------- */
+  function updateNowPlaying() {
+    const s = SONGS[S.song];
+    if (S.playing) {
+      $("#np-label").textContent = "Práve hrá";
+      $("#np-title").textContent = `${s.a} – ${s.t}`;
+      $("#np-time").textContent = `${fmt(S.songPos)} / ${s.d}`;
+      $("#np-prog").style.width = `${(S.songPos / secs(s.d)) * 100}%`;
+      $("#v-title").textContent = `${s.a} – ${s.t}`;
+      $("#q-now").textContent = `Hrá: ${s.a} – ${s.t}`;
+      $("#playing-txt").textContent = `Hrá: ${s.a} – ${s.t}`;
+    } else {
+      const p = PRESETS.find((x) => x.id === S.preset).name;
+      $("#np-label").textContent = "Ručné ovládanie";
+      $("#np-title").textContent = S.matrixMode === "draw" ? `${p} · kresba na 8×8` : `Preset: ${p}`;
+      $("#np-time").textContent = "nič nehrá";
+      $("#np-prog").style.width = "0%";
+      $("#q-now").textContent = `Ručné ovládanie: ${p}`;
+      $("#playing-txt").textContent = "Nič nehrá. Vyber skladbu.";
+    }
+  }
+
+  /* ---------- main loop, ~30 fps ---------- */
+  let last = performance.now(), lastPaint = 0;
+  const t0 = last;
+  function loop(now) {
+    const dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (S.playing) { S.songPos += dt; if (S.songPos > secs(SONGS[S.song].d)) S.songPos = 0; }
+    if (now - lastPaint > (reduced ? 80 : 33)) { lastPaint = now; paint((now - t0) / 1000); updateNowPlaying(); }
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  /* ---------- fake terminal ---------- */
+  const term = $("#term"), curLine = term.querySelector(".cur-line");
+  const TAGCOL = ["hot", "warm", "cool", "ok", "vio"];
+  const tagClass = (tag) => TAGCOL[[...tag].reduce((a, c) => a + c.charCodeAt(0), 0) % TAGCOL.length];
+  const rnd = (a, b) => a + Math.floor(Math.random() * (b - a + 1));
+  const hx = () => rnd(0, 255).toString(16).padStart(2, "0");
+  const hexBytes = (n) => Array.from({ length: n }, hx).join(" ");
+  const pbar = (p) => `[${"#".repeat(Math.round(p / 5)).padEnd(20, "-")}]`;
+  let frameNo = 8400;
+  function ts() {
+    const d = new Date();
+    return `[${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}:${String(d.getSeconds()).padStart(2, "0")}.${String(d.getMilliseconds()).padStart(3, "0")}]`;
+  }
+  function addLine(lvl, tag, msg) {
+    const d = document.createElement("div");
+    d.className = "ln";
+    const parts = [["ts", ts() + " "], [`tg tg-${tagClass(tag)}`, tag.padEnd(11)], [`lv lv-${lvl}`, lvl.padEnd(6)], ["msg", msg]];
+    parts.forEach(([c, txt]) => { const s = document.createElement("span"); s.className = c; s.textContent = txt; d.appendChild(s); });
+    term.insertBefore(d, curLine);
+    while (term.children.length > 140) term.firstElementChild.remove();
+  }
+  function banner() {
+    const b = document.createElement("div");
+    b.className = "banner";
+    b.textContent = [
+      " ___    ___   ___     ___   __   ___   __ ",
+      "|   \\  / _ \\ |   \\   |_  ) /  \\ |_  ) / / ",
+      "| |) || (_) || |) |   / / | () | / / / _ \\",
+      "|___/  \\___/ |___/   /___| \\__/ /___|\\___/",
+      "        LIGHT ENGINE v4.2.0 · build 1816",
+    ].join("\n");
+    term.insertBefore(b, curLine);
+  }
+  const FILLER = [
+    () => ["INFO", "rgb-core", `frame ${String(frameNo++).padStart(6, "0")} committed (36 B, sum 0x${hx()})`],
+    () => ["DEBUG", "serial", `tx a5 5a 01 1e 00 ${hexBytes(8)} …`],
+    () => ["INFO", "fft", `32 bins ok, peak ${rnd(60, 240)} Hz, beat=${Math.random() < 0.4 ? 1 : 0}`],
+    () => ["WARN", "photon-bus", `coherence drift 0.0${rnd(1, 9)}%, recalibrating`],
+    () => { const p = rnd(5, 100); return ["OK", "lattice", `matrix sync ${pbar(p)} ${p}%`]; },
+    () => ["INFO", "kernel", `thermal ${rnd(38, 47)}.${rnd(0, 9)}°C, governor=turbo`],
+    () => ["DEBUG", "matrix", `row ${rnd(0, 7)} <- 0b${rnd(0, 255).toString(2).padStart(8, "0")}`],
+    () => ["INFO", "esp32", `ack seq=${frameNo} rtt=${rnd(3, 9)}.${rnd(0, 9)} ms`],
+    () => ["INFO", "sync", `clock skew ${rnd(0, 4)}.${rnd(10, 99)} us, holdover ok`],
+    () => ["OK", "shader", `compiled spectral kernel #${rnd(100, 999)} in ${rnd(2, 19)} ms`],
+    () => ["DEBUG", "dma", `burst ${hexBytes(4)} -> ch${rnd(0, 3)}`],
+    () => ["INFO", "entropy", `pool ${rnd(80, 99)}% (${rnd(1000, 4096)} bits)`],
+  ];
+  const BOOT = [
+    ["INFO", "kernel", "loading module rgb_core.ko"],
+    ["OK", "kernel", "mounted /dev/photon0"],
+    ["INFO", "kernel", "loading module spectral_fft.ko"],
+    ["OK", "fft", "analyzer armed, window=2048 hann"],
+    ["INFO", "esp32", "handshake: HELLO fw=1.0.3 leds=10"],
+    ["OK", "matrix", "max7219 scan-limit=7 intensity=8"],
+  ];
+  let burstQ = [];
+  function burst(reason) {
+    burstQ.push(["INFO", "scheduler", `${reason}: spinning up pipeline`]);
+    BOOT.forEach((l) => burstQ.push(l));
+    for (let p = 0; p <= 100; p += 10) burstQ.push(["OK", "lattice", `prewarm ${pbar(p)} ${p}%`]);
+    for (let i = 0; i < 16; i++) burstQ.push(FILLER[rnd(0, FILLER.length - 1)]());
+    burstQ.push(["OK", "scheduler", "pipeline ready"]);
+  }
+  function tick() {
+    if (burstQ.length) { addLine(...burstQ.shift()); setTimeout(tick, 30); return; }
+    addLine(...FILLER[rnd(0, FILLER.length - 1)]());
+    setTimeout(tick, rnd(140, 380));
+  }
+  banner();
+  BOOT.forEach((l) => addLine(...l));
+  tick();
+  const event = (lvl, tag, msg) => burstQ.unshift([lvl, tag, msg]);
+
+  /* ---------- QR codes ---------- */
+  const QR_TEXT = { wifi: "WIFI:S:DOD-SPSE;T:WPA;P:svetlo2026;;", url: "http://192.168.137.1:8000" };
+  $$("canvas[data-qr]").forEach((c) => {
+    const g = c.getContext("2d");
+    let n, dark;
+    if (typeof qrcode === "function") {
+      const q = qrcode(0, "M"); q.addData(QR_TEXT[c.dataset.qr]); q.make();
+      n = q.getModuleCount(); dark = (r, k) => q.isDark(r, k);
+    } else {
+      n = 25; dark = (r, k) => ((r * 7 + k * 13 + r * k) % 5 < 2);
+    }
+    const m = 2, cell = 4;
+    c.width = c.height = (n + m * 2) * cell;
+    g.fillStyle = tok("--qr-light"); g.fillRect(0, 0, c.width, c.height);
+    g.fillStyle = tok("--qr-dark");
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (dark(r, k)) g.fillRect((k + m) * cell, (r + m) * cell, cell, cell);
+  });
+
+  /* ---------- views ---------- */
+  function setView(v) {
+    S.view = v;
+    $$("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === v)));
+    $("#view-notebook").hidden = v !== "notebook";
+    $("#view-phone").hidden = v !== "phone";
+    if (location.hash.slice(1) !== v) { try { history.replaceState(null, "", "#" + v); } catch (e) { /* hash is a convenience only */ } }
+  }
+  $$("[data-view]").forEach((b) => b.addEventListener("click", () => setView(b.dataset.view)));
+  addEventListener("hashchange", () => { const h = location.hash.slice(1); if (h === "notebook" || h === "phone") setView(h); });
+  if (location.hash.slice(1) === "phone") setView("phone");
+
+  function setPlaying(p) {
+    S.playing = p;
+    $("#nb-play").setAttribute("aria-pressed", String(p));
+    $("#nb-idle").setAttribute("aria-pressed", String(!p));
+    $("#video").hidden = !p;
+    $("#idle").hidden = p;
+    $("#bar-qr1").hidden = !p;
+    $("#bar-qr2").hidden = !p;
+    renderSongs();
+  }
+  $("#nb-play").addEventListener("click", () => { setPlaying(true); event("INFO", "player", `resumed "${SONGS[S.song].t}"`); });
+  $("#nb-idle").addEventListener("click", () => { setPlaying(false); event("INFO", "player", "stopped, manual mode"); });
+  $("#term-width").addEventListener("input", (e) => {
+    $("#nb").style.setProperty("--term-w", e.target.value + "%");
+    $("#term-width-out").textContent = e.target.value + " %";
+  });
+  $("#burst").addEventListener("click", () => burst("manual trigger"));
+
+  /* ---------- phone ---------- */
+  let loadToken = 0;
+  function goPhone(name, opts = {}) {
+    S.phone = name;
+    $$("[data-scr]").forEach((s) => (s.hidden = s.dataset.scr !== name));
+    $$("[data-state]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.state === name)));
+    $("#ph").scrollTop = 0;
+    loadToken++;
+    if (name === "loading") runLoader(opts.then || "control", opts.tab);
+    if (name === "control") { if (S.turnLeft <= 0) S.turnLeft = 180; renderTimer(); }
+    if (name === "queue") { leftQueue = false; $(".pos h3").textContent = "Si v poradí"; $("#leave").textContent = "Odísť z radu"; $("#q-pos").textContent = (opts.pos || 3) + "."; $("#q-wait").textContent = `Na rade si približne o ${(opts.pos || 3) * 2} minút`; }
+  }
+  $$("[data-state]").forEach((b) => b.addEventListener("click", () => {
+    if (b.dataset.state === "control") S.turnLeft = 180;
+    goPhone(b.dataset.state);
+  }));
+  let leftQueue = false;
+  $("#leave").addEventListener("click", () => {
+    leftQueue = !leftQueue;
+    $("#q-pos").textContent = leftQueue ? "–" : "3.";
+    $(".pos h3").textContent = leftQueue ? "Nie si v rade" : "Si v poradí";
+    $("#q-wait").textContent = leftQueue ? "Keď budeš chcieť, postav sa znova na koniec." : "Na rade si približne o 6 minút";
+    $("#leave").textContent = leftQueue ? "Postaviť sa do radu" : "Odísť z radu";
+    event("INFO", "queue", leftQueue ? "session 3c9e… left the queue" : "session 3c9e… joined the queue");
+  });
+  $("#requeue").addEventListener("click", () => { event("INFO", "queue", `session 3c9e… re-queued at position ${S.qCount + 1}`); goPhone("queue", { pos: 5 }); });
+
+  const STEPS = ["Inicializujem fotónovú zbernicu", "Kalibrujem RGB jadro", "Synchronizujem 8×8 mriežku", "Načítavam spektrálny analyzátor", "Overujem kvantovú entropiu", "Pripravujem svetelnú show"];
+  function runLoader(next, tab) {
+    const my = loadToken, start = performance.now(), dur = 3200;
+    burst("client loading screen");
+    const arc = $("#ring-arc"), pct = $("#ring-pct"), steps = $("#steps"), hex = $("#hex");
+    const step = () => {
+      if (my !== loadToken) return;
+      const p = clamp01((performance.now() - start) / dur);
+      const e = 1 - Math.pow(1 - p, 2.2);
+      arc.setAttribute("stroke-dashoffset", String(276.5 * (1 - e)));
+      pct.textContent = Math.round(e * 100) + " %";
+      const k = Math.min(STEPS.length - 1, Math.floor(e * STEPS.length));
+      steps.innerHTML = "";
+      STEPS.forEach((s, i) => { const d = document.createElement("div"); d.className = i < k || p >= 1 ? "done" : i === k ? "now" : "todo"; d.textContent = s; steps.appendChild(d); });
+      hex.textContent = "0x" + hexBytes(30).replace(/ /g, "");
+      if (p < 1) setTimeout(step, 60);
+      else setTimeout(() => { if (my !== loadToken) return; goPhone(next); if (tab) setTab(tab); }, 350);
+    };
+    step();
+  }
+
+  function renderTimer() {
+    $("#timer-txt").textContent = fmt(Math.max(0, S.turnLeft));
+    $("#timer-arc").setAttribute("stroke-dashoffset", String(263.9 * (1 - S.turnLeft / 180)));
+  }
+  setInterval(() => {
+    if (S.phone !== "control") return;
+    S.turnLeft--;
+    renderTimer();
+    if (S.turnLeft <= 0) { event("INFO", "queue", "turn expired, next session acquired control"); goPhone("ended"); }
+  }, 1000);
+
+  function setTab(tab) {
+    S.tab = tab;
+    $$("[data-tab]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.tab === tab)));
+    $$("[data-pane]").forEach((p) => (p.hidden = p.dataset.pane !== tab));
+  }
+  $$("[data-tab]").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+  // presets
+  const presetBox = $("#presets");
+  PRESETS.forEach((p) => {
+    const b = document.createElement("button");
+    b.type = "button"; b.className = "preset"; b.id = "preset-" + p.id; b.dataset.preset = p.id;
+    b.innerHTML = `<i class="sw-${p.id}"></i>`;
+    b.appendChild(document.createTextNode(p.name));
+    b.addEventListener("click", () => {
+      S.preset = p.id; S.matrixMode = "icon";
+      if (S.playing) setPlaying(false);
+      renderPresets();
+      event("INFO", "preset", `switched to '${p.id}' speed=${S.speed.toFixed(1)} bright=${Math.round(S.bright * 100)}%`);
+    });
+    presetBox.appendChild(b);
+  });
+  function renderPresets() {
+    $$("[data-preset]").forEach((b) => b.setAttribute("aria-pressed", String(!S.playing && b.dataset.preset === S.preset)));
+    const p = PRESETS.find((x) => x.id === S.preset);
+    $("#color").disabled = !p.color;
+    $("#color-note").hidden = p.color;
+  }
+  $("#speed").addEventListener("input", (e) => { S.speed = +e.target.value; $("#speed-out").textContent = S.speed.toFixed(1) + "×"; });
+  $("#speed").addEventListener("change", () => event("DEBUG", "preset", `param speed=${S.speed.toFixed(1)}`));
+  $("#bright").addEventListener("input", (e) => { S.bright = e.target.value / 100; $("#bright-out").textContent = e.target.value + " %"; });
+  $("#bright").addEventListener("change", () => event("DEBUG", "power", `brightness ${Math.round(S.bright * 100)}%, est. ${Math.round(S.bright * 300)} mA`));
+  $("#color").addEventListener("input", (e) => { S.color = e.target.value; });
+
+  // draw grid
+  const drawBox = $("#draw");
+  for (let i = 0; i < 64; i++) {
+    const c = document.createElement("button");
+    c.type = "button"; c.className = "cell"; c.id = "cell-" + i; c.setAttribute("aria-pressed", "false");
+    c.setAttribute("aria-label", `Bod ${(i % 8) + 1}, ${Math.floor(i / 8) + 1}`);
+    c.addEventListener("click", () => {
+      S.draw[i] = S.draw[i] ? 0 : 1; S.matrixMode = "draw";
+      if (S.playing) { setPlaying(false); renderPresets(); }
+      c.setAttribute("aria-pressed", String(!!S.draw[i]));
+    });
+    drawBox.appendChild(c);
+  }
+  // start with a small smiley so the feature is visible
+  [18, 21, 42, 45, 51, 52, 50, 53].forEach((i) => { S.draw[i] = 1; $("#cell-" + i).setAttribute("aria-pressed", "true"); });
+  $("#draw-clear").addEventListener("click", () => { S.draw.fill(0); $$(".cell").forEach((c) => c.setAttribute("aria-pressed", "false")); S.matrixMode = "draw"; });
+  $("#draw-icon").addEventListener("click", () => { S.matrixMode = "icon"; });
+
+  // songs
+  function renderSongs() {
+    const box = $("#songs");
+    box.innerHTML = "";
+    SONGS.forEach((s, i) => {
+      const b = document.createElement("button");
+      b.type = "button"; b.className = "song"; b.id = "song-" + i; b.disabled = !s.ok;
+      b.setAttribute("aria-pressed", String(S.playing && S.song === i));
+      const tEl = document.createElement("b"); tEl.textContent = s.t;
+      const aEl = document.createElement("span"); aEl.textContent = s.ok ? s.a : `${s.a} · nestiahnuté`;
+      const dEl = document.createElement("span"); dEl.className = "d"; dEl.textContent = S.playing && S.song === i ? "hrá" : s.d;
+      b.append(tEl, dEl, aEl);
+      b.addEventListener("click", () => {
+        S.song = i; S.songPos = 0; setPlaying(true); renderPresets();
+        event("INFO", "player", `now playing "${s.t}" (${s.a})`);
+        goPhone("loading", { then: "control", tab: "hud" });
+      });
+      box.appendChild(b);
+    });
+  }
+
+  renderPresets();
+  renderSongs();
+  setPlaying(true);
+  renderTimer();
+})();
+</script>
+</body>
+</html>

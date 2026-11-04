@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hcl"
+version = "0.1.0"
+description = "Hardware communication layer between the DOD 2026 backend and the ESP32 (docs/hcl.md)"
+requires-python = ">=3.13"
+dependencies = ["pyserial==3.5"]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.4", "pytest-timeout==2.3.1"]
+
+[tool.setuptools.packages.find]
+include = ["hcl*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+timeout = 10

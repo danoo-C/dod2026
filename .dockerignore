@@ -1,0 +1,5 @@
+# The image only needs the files that define its dependencies; the source is
+# mounted at runtime. Everything else stays out of the build context.
+*
+!src/hcl/pyproject.toml
+!src/backend/pyproject.toml
