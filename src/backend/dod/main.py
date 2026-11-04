@@ -12,6 +12,7 @@ import logging
 import sys
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI
@@ -43,12 +44,13 @@ LOG_FORMATS = {
 
 
 def create_app(settings: Settings | None = None, *, link: Any = None,
-               restart_seconds: float | None = None) -> FastAPI:
+               restart_seconds: float | None = None, frontend_dist: Path | None = None) -> FastAPI:
     """The app. Without `settings`, they are read from the environment, and a
     wrong one stops the process with a message naming the variable.
 
     `link` replaces the link to the board from DOD_SERIAL (tests pass one from
-    hcl.testing.sim_link()); main.py never imports hcl itself.
+    hcl.testing.sim_link()); main.py never imports hcl itself. `frontend_dist`
+    replaces the frontend's build folder (src/frontend/dist).
     """
     if settings is None:
         settings = settings_or_exit()
@@ -106,6 +108,7 @@ def create_app(settings: Settings | None = None, *, link: Any = None,
     app.state.songs = lambda: []  # the song list (plan step 8)
     app.include_router(http.router)
     app.include_router(ws.router)
+    http.mount_frontend(app, frontend_dist if frontend_dist is not None else http.FRONTEND_DIST)
     return app
 
 

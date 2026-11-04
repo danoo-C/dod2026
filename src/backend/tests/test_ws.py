@@ -337,10 +337,10 @@ def test_api_session_with_the_key(client):
 
 
 @pytest.mark.parametrize("path", ["/", "/internal/main", "/internal/logging"])
-def test_pages_are_a_placeholder_and_set_the_session(client, path):
+def test_pages_set_the_session(client, path):
     client.cookies.clear()
     response = client.get(path)
-    assert response.status_code == 200 and "DOD 2026" in response.text
+    assert response.status_code == 200 and "DOD 2026" in response.text  # the build's or the placeholder
     assert SESSION_COOKIE in response.cookies
 
 

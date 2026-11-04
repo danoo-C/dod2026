@@ -128,14 +128,60 @@ Done when:
 
 - [ ] `./dod sim`: `http://localhost:5173` opens from Windows, and from a phone
   on the same network at the PC's address; a change to a `.tsx` shows up
-  without a reload
-- [ ] after `./dod frontend-build`, `./dod backend` serves the app on port
+  without a reload – **partly checked**, see Built
+- [x] after `./dod frontend-build`, `./dod backend` serves the app on port
   8000; `/internal/main` and `/internal/logging` too (React Router picks)
-- [ ] `./dod test` runs all three suites; renaming a field in
+- [x] `./dod test` runs all three suites; renaming a field in
   `dod/api/messages.py` and running `./dod schema` makes `tsc` fail where
   the field is used
-- [ ] no request leaves the page for the internet (checked in the browser's
-  network tab: fonts and everything else come from the backend)
+- [x] no request leaves the page for the internet (checked in the browser's
+  network tab: fonts and everything else come from the backend) – checked in
+  the build (no external URL in it); the browser's network tab once a
+  browser looks at it
+
+Built:
+
+- `src/frontend/`: React 19.3, React Router 8.5, Vite 8.3, TypeScript 7.0
+  (`strict`, plus `noUncheckedIndexedAccess`), Vitest 5 with jsdom and
+  Testing Library. Every version exact, picked with `npm install
+  --before=2026-10-21` (two weeks old at least), `package-lock.json`
+  committed. Two type checks: `tsconfig.json` for the browser code and the
+  tests, `tsconfig.node.json` for the Vite and Vitest configs (Node's types
+  stay out of the browser code).
+- `./dod npm`, `./dod sim`, `./dod dev`, `./dod frontend-build`, and
+  `./dod test frontend` as the third suite (a path under `src/frontend`
+  picks it; its arguments go to Vitest). Node is `node:22.23.4-slim`; npm's
+  cache is the Docker volume `dod2026-npm`; `npm ci` runs by itself when
+  `node_modules` is missing or older than the lock file. `sim` and `dev` run
+  the backend in the background and Vite in front, on the network
+  `dod2026-dev`; Ctrl-C stops both. The backend's port 8000 is published
+  too, for `curl /api/status`.
+- `./dod schema` writes `messages.json` and then `src/api/messages.ts`
+  (`scripts/types.mjs`, json-schema-to-typescript). Field titles and the
+  bands' length are left out of the types (they would give aliases like
+  `Type7` and a 32-element tuple); the backend checks the length.
+  `npm test` fails when `messages.ts` is out of date.
+- the backend: the page routes answer with `dist/index.html`
+  (`Cache-Control: no-cache`), `/assets` from `dist/assets`; before a build
+  the placeholder and 404s (Starlette's `StaticFiles` would answer with an
+  error while the folder is missing). A build made while the backend runs is
+  picked up. `create_app(frontend_dist=)` for the tests.
+- the hello page per route: the screen's name, its role, and whether
+  `/api/health` answers.
+- checked by hand: the build on port 8000 (all three routes, the asset);
+  through Vite on 5173: the page, `/api/health`, `/api/session` with its
+  cookie, and a WebSocket upgrade that gets the backend's `welcome`; an
+  edited `.tsx` is served changed at once. **Not checked yet:** a Windows
+  browser and the reload-free update in it, and a phone. WSL runs in NAT
+  mode, which forwards ports to Windows' `localhost` only: a phone needs
+  `networkingMode=mirrored` in `%UserProfile%\.wslconfig` (then `wsl
+  --shutdown`) or a `netsh interface portproxy` rule for 5173 (admin), and
+  Windows Firewall allowing it.
+- the frontend's suite: 7 tests, ~1 s (plus ~10 s for the two type checks
+  and the container); backend 424 tests.
+- `Error` in `messages.ts` is the backend's error message, and shadows the
+  global `Error` where it is imported: import it as `import type { Error as
+  ErrorMessage }`.
 
 ### Step 2. The connection (backend.md 9)
 

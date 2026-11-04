@@ -1,10 +1,16 @@
 """HTTP routes (docs/backend.md 9).
 
-    GET /, /internal/main, /internal/logging   the frontend (a placeholder until it exists)
+    GET /, /internal/main, /internal/logging   the frontend's index.html (a placeholder until it is built)
+    GET /assets/*                              the rest of the frontend's build
     GET /api/session[?key=...]                 the session cookie; with the key, the internal one
     GET /api/status                            the HCL's, the render loop's and the tasks' view
     GET /api/songs                             the song list (empty until plan step 8)
     GET /api/health
+
+The frontend is served from its build, `src/frontend/dist` in the mounted
+project (`./dod frontend-build`); React Router picks the screen. In
+development the pages come from Vite instead (`./dod sim`), which forwards
+`/api`, `/ws` and `/media` here.
 
 `/api/session` is how every page starts, before its WebSocket: it goes
 through `/api`, so it works the same behind Vite's dev server. With
@@ -14,10 +20,12 @@ the internal cookie, HttpOnly, so page scripts never hold the key.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from dod.control.sessions import (
     INTERNAL_COOKIE,
@@ -31,6 +39,8 @@ from dod.control.sessions import (
 )
 
 router = APIRouter()
+
+FRONTEND_DIST = Path(__file__).resolve().parents[3] / "frontend" / "dist"  # src/frontend/dist
 
 PLACEHOLDER = """<!doctype html>
 <html lang="sk"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -54,9 +64,29 @@ def ensure_session(request: Request, response: Response) -> str:
 @router.get("/internal/main", response_class=HTMLResponse)
 @router.get("/internal/logging", response_class=HTMLResponse)
 async def page(request: Request) -> HTMLResponse:
-    response = HTMLResponse(PLACEHOLDER)
+    index = request.app.state.frontend_dist / "index.html"
+    if index.is_file():
+        # no-cache: a new build is picked up on the next load; the files it
+        # points to have a hash in their names, so they can be cached
+        response = HTMLResponse(index.read_text(encoding="utf-8"), headers={"Cache-Control": "no-cache"})
+    else:
+        response = HTMLResponse(PLACEHOLDER)
     ensure_session(request, response)
     return response
+
+
+class BuildFiles(StaticFiles):
+    """The build's /assets. Until the frontend is built the folder doesn't
+    exist: 404, where StaticFiles would answer every request with an error."""
+
+    async def check_config(self) -> None:
+        if self.directory is not None and Path(self.directory).is_dir():
+            await super().check_config()
+
+
+def mount_frontend(app: Any, dist: Path) -> None:
+    app.state.frontend_dist = dist
+    app.mount("/assets", BuildFiles(directory=dist / "assets", check_dir=False), name="assets")
 
 
 @router.get("/api/session")

@@ -2,9 +2,13 @@
 # Dev wrapper for DOD 2026. Every tool runs in Docker, nothing is installed in WSL.
 #
 #   ./dod build                            (re)build the image
-#   ./dod test [hcl|backend] [pytest args] run the tests: both suites, or one
+#   ./dod test [hcl|backend|frontend] [args]  run the tests: all three suites, or one
 #   ./dod backend                          the backend on http://localhost:8000, reloads on every save
-#   ./dod schema                           write the WebSocket messages' JSON Schema for the frontend
+#   ./dod sim                              backend + Vite on http://localhost:5173, simulated board
+#   ./dod dev                              the same with the board on /dev/ttyUSB0 (or DOD_SERIAL)
+#   ./dod npm <args>                       any npm command, in a Node container, in src/frontend
+#   ./dod frontend-build                   build the frontend into src/frontend/dist (the backend serves it)
+#   ./dod schema                           write the WebSocket messages' JSON Schema and TypeScript types
 #   ./dod shell                            a shell in the container
 #   ./dod hcl <tool> [args]                HCL tools: monitor, pattern, bench, repl (docs/hcl.md section 9)
 #
@@ -13,19 +17,35 @@
 # The first serial port found is passed into the container; ESP_PORT picks
 # another one.
 #
-# `./dod test` runs each suite on its own (src/hcl, then src/backend), because
-# each has its own pytest settings. A path picks its suite by itself:
-# `./dod test src/backend/tests/test_imports.py -k relative`.
+# `./dod test` runs each suite on its own (src/hcl, src/backend, then
+# src/frontend), because each has its own settings. A path picks its suite by
+# itself: `./dod test src/backend/tests/test_imports.py -k relative`. Extra
+# arguments go to pytest, or to Vitest for `./dod test frontend`.
+#
+# Node never runs in WSL: npm, Vite and Vitest run in the Node image, with
+# npm's cache in a Docker volume so `npm ci` doesn't download everything again.
 set -euo pipefail
 
 IMAGE=dod2026
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+NODE_IMAGE=node:22.23.4-slim
+NPM_CACHE=dod2026-npm  # Docker volume
+NETWORK=dod2026-dev  # ./dod sim and dev: Vite reaches the backend by its container name
+FRONTEND=src/frontend
 HCL_TOOLS=(monitor pattern bench repl)
-SUITES=(hcl backend)
+SUITES=(hcl backend frontend)
 PORT_HTTP=8000
+PORT_VITE=5173
+
+# The backend with reloading. The settings are checked once before uvicorn
+# starts: with --reload, a bad one would otherwise leave the reloader waiting
+# for a file change that can't fix an environment variable.
+BACKEND_CMD=(sh -c 'python -c "from dod.main import settings_or_exit; settings_or_exit()" && exec "$@"' sh
+             uvicorn --factory dod.main:create_app --host 0.0.0.0 --port "$PORT_HTTP"
+             --reload --reload-dir src/backend --reload-dir src/hcl --ws-max-size 65536)
 
 usage() {
-    echo "usage: ./dod build | test [hcl|backend] [pytest args] | backend | schema | shell | hcl <monitor|pattern|bench|repl> [args]" >&2
+    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | shell | hcl <monitor|pattern|bench|repl> [args]" >&2
     exit 1
 }
 
@@ -79,6 +99,57 @@ docker_args() {
     fi
 }
 
+# docker run arguments for the Node container, in src/frontend
+node_args() {
+    if ! docker volume inspect "$NPM_CACHE" >/dev/null 2>&1; then
+        docker volume create "$NPM_CACHE" >/dev/null
+        # a new volume belongs to root, and npm runs as the calling user
+        docker run --rm -v "$NPM_CACHE:/cache" "$NODE_IMAGE" chown "$(id -u):$(id -g)" /cache
+    fi
+    nargs=(--rm --init -i -v "$DIR:/work" -w "/work/$FRONTEND" --user "$(id -u):$(id -g)"
+           -e HOME=/tmp -v "$NPM_CACHE:/cache" -e npm_config_cache=/cache
+           -e npm_config_update_notifier=false -e npm_config_fund=false)
+    if [[ -t 0 && -t 1 ]]; then
+        nargs+=(-t)
+    fi
+}
+
+# npm ci when node_modules is missing or older than the lock file
+ensure_node_modules() {
+    local lock="$DIR/$FRONTEND/package-lock.json" installed="$DIR/$FRONTEND/node_modules/.package-lock.json"
+    if [[ ! -f "$installed" || "$lock" -nt "$installed" ]]; then
+        echo "dod: installing the frontend's packages (npm ci)" >&2
+        docker run "${nargs[@]}" "$NODE_IMAGE" npm ci >&2
+    fi
+}
+
+# ./dod sim and ./dod dev: the backend in the background, Vite in front.
+# The browser only talks to Vite (5173), which forwards /api, /ws and /media.
+# Ctrl-C stops both.
+dev_stack() {
+    export DOD_SERIAL="$1"  # docker_args passes it into the backend's container
+    docker_args
+    node_args
+    ensure_node_modules
+    if ! docker network inspect "$NETWORK" >/dev/null 2>&1; then
+        docker network create "$NETWORK" >/dev/null
+    fi
+    # the backend runs in the background: no terminal of its own
+    local bg=() a key="${DOD_INTERNAL_KEY:-dev}"
+    for a in "${args[@]}"; do
+        if [[ "$a" != "-t" && "$a" != "-i" ]]; then
+            bg+=("$a")
+        fi
+    done
+    trap 'docker stop dod2026-backend dod2026-vite >/dev/null 2>&1 || true' EXIT
+    docker run "${bg[@]}" --name dod2026-backend --network "$NETWORK" -p "$PORT_HTTP:$PORT_HTTP" \
+        -e DOD_INTERNAL_KEY="$key" "$IMAGE" "${BACKEND_CMD[@]}" &
+    echo "dod: http://localhost:$PORT_VITE  (internal pages: /internal/main?key=$key, /internal/logging?key=$key)" >&2
+    docker run "${nargs[@]}" --name dod2026-vite --network "$NETWORK" -p "$PORT_VITE:$PORT_VITE" \
+        -e DOD_BACKEND="http://dod2026-backend:$PORT_HTTP" "$NODE_IMAGE" \
+        npx vite --host 0.0.0.0 --port "$PORT_VITE" --strictPort
+}
+
 run_tests() {
     local suites=("${SUITES[@]}") picked="" paths=false
     if [[ " ${SUITES[*]} " == *" ${1:-} "* ]]; then
@@ -108,12 +179,26 @@ run_tests() {
         if [[ ${#suites[@]} -gt 1 ]]; then
             echo "=== $s (src/$s)"
         fi
-        local cmd=(python -m pytest)
-        if ! $paths; then
-            cmd+=("src/$s")
-        fi
         status=0
-        docker run "${args[@]}" "$IMAGE" "${cmd[@]}" "$@" || status=$?
+        if [[ "$s" == frontend ]]; then
+            # type check, the generated types' check, then Vitest; arguments
+            # only when this suite was picked (pytest's would mean nothing here)
+            local vargs=()
+            if [[ -n "$picked" ]]; then
+                for a in "$@"; do
+                    vargs+=("${a#"$FRONTEND/"}")  # paths are relative to src/frontend inside
+                done
+            fi
+            node_args
+            ensure_node_modules
+            docker run "${nargs[@]}" "$NODE_IMAGE" npm test -- "${vargs[@]}" || status=$?
+        else
+            local cmd=(python -m pytest)
+            if ! $paths; then
+                cmd+=("src/$s")
+            fi
+            docker run "${args[@]}" "$IMAGE" "${cmd[@]}" "$@" || status=$?
+        fi
         if [[ $status -eq 5 ]]; then
             # pytest exits with 5 when there are no tests yet; that is not a failure.
             echo "dod: no tests in src/$s yet"
@@ -134,17 +219,31 @@ case "$1" in
         # Published on WSL's port 8000, which WSL also forwards to Windows' localhost.
         # The dev key opens the internal pages: /internal/main?key=dev (docs/backend.md 9).
         args+=(--name dod2026-backend -p "$PORT_HTTP:$PORT_HTTP" -e DOD_INTERNAL_KEY="${DOD_INTERNAL_KEY:-dev}")
-        # The settings are checked once before uvicorn starts: with --reload, a
-        # bad one would otherwise leave the reloader waiting for a file change
-        # that can't fix an environment variable.
-        exec docker run "${args[@]}" "$IMAGE" sh -c \
-            'python -c "from dod.main import settings_or_exit; settings_or_exit()" && exec "$@"' sh \
-            uvicorn --factory dod.main:create_app --host 0.0.0.0 --port "$PORT_HTTP" \
-            --reload --reload-dir src/backend --reload-dir src/hcl --ws-max-size 65536
+        exec docker run "${args[@]}" "$IMAGE" "${BACKEND_CMD[@]}"
+        ;;
+    sim)
+        dev_stack sim
+        ;;
+    dev)
+        dev_stack "${DOD_SERIAL:-/dev/ttyUSB0}"
+        ;;
+    npm)
+        shift
+        node_args
+        exec docker run "${nargs[@]}" "$NODE_IMAGE" npm "$@"
+        ;;
+    frontend-build)
+        node_args
+        ensure_node_modules
+        exec docker run "${nargs[@]}" "$NODE_IMAGE" npm run build
         ;;
     schema)
+        # the JSON Schema from the Pydantic models, then the TypeScript types from it
         docker_args
-        exec docker run "${args[@]}" "$IMAGE" python -m dod.api.schema
+        docker run "${args[@]}" "$IMAGE" python -m dod.api.schema
+        node_args
+        ensure_node_modules
+        exec docker run "${nargs[@]}" "$NODE_IMAGE" npm run --silent types
         ;;
     shell)
         docker_args

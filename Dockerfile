@@ -3,7 +3,9 @@ FROM python:3.13-slim
 # Only the dependencies are installed into the image. The source is not copied:
 # ./dod mounts the project at /work, and the editable installs point at
 # /work/src/hcl and /work/src/backend, so code changes need no rebuild.
-# (The Node stage for the frontend comes with its own plan.)
+# The frontend runs in its own Node container (./dod npm, sim, frontend-build);
+# a Node stage here comes with the self-contained image for the notebook
+# (docs/plans/frontend.md, decision 6).
 WORKDIR /work
 COPY src/hcl/pyproject.toml src/hcl/pyproject.toml
 COPY src/backend/pyproject.toml src/backend/pyproject.toml

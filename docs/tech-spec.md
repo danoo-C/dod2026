@@ -510,10 +510,14 @@ tools run in the Docker image, behind one wrapper script, `./dod`.
 
 ```sh
 ./dod build            # (re)build the image
-./dod test             # pytest, each suite on its own: src/hcl, then src/backend (+ frontend type check, later)
+./dod test             # each suite on its own: src/hcl, src/backend (pytest), src/frontend (tsc + Vitest)
 ./dod test backend -x  # one suite; a path picks its suite too: ./dod test src/backend/tests/test_imports.py
 ./dod backend          # the backend alone on http://localhost:8000, reloads on every save, DOD_INTERNAL_KEY=dev
-./dod schema           # write the WebSocket messages' JSON Schema for the frontend's types
+./dod sim              # backend + Vite dev server on http://localhost:5173, the HCL simulates the board (7.3)
+./dod dev              # the same with the board on /dev/ttyUSB0
+./dod npm install      # any npm command, run in the node container in src/frontend/
+./dod frontend-build   # build the frontend into src/frontend/dist/, which the backend serves on 8000
+./dod schema           # the WebSocket messages' JSON Schema, and the frontend's TypeScript types from it
 ./dod shell            # a shell in the container
 ./dod hcl monitor      # HCL tools: monitor, pattern, bench, repl – see hcl.md section 9
 ```
@@ -523,9 +527,6 @@ Coming with their plans:
 ```sh
 ./dod songs            # download the songs from songs.txt that are not in cache/ yet (backend plan, step 8)
 ./dod backend-soak     # 30-minute soak test against the simulated board (backend plan, step 10)
-./dod dev              # backend + Vite dev server, board on /dev/ttyUSB0, http://localhost:5173 (frontend plan)
-./dod sim              # the same, without a board: the HCL simulates it, see 7.3 (frontend plan)
-./dod npm install      # any npm command, run in the node container in src/frontend/ (frontend plan)
 ./dod esp upload       # put src/hcl/esp/ on the board, see section 8 (HCL stage 2)
 ./dod esp run          # run src/hcl/esp/ from the PC without saving it on the board (HCL stage 2)
 ./dod esp repl         # Python prompt on the board (HCL stage 2)
@@ -540,7 +541,7 @@ source mounted and both reloading on every save:
 - **backend**: uvicorn with `--reload`, `--device /dev/ttyUSB0` and
   `DOD_SERIAL=/dev/ttyUSB0`, port 8000. The board is attached to WSL with
   `usbipd attach --wsl --busid <id>` as in `~/spseke/esp/setup`.
-- **frontend**: `node:22-slim` running `vite --host`, port 5173. Vite
+- **frontend**: `node:22-slim` (pinned: `node:22.23.4-slim`) running `vite --host`, port 5173. Vite
   forwards `/api`, `/ws` and `/media` to the backend, so the browser only
   ever talks to 5173, and React changes show up without a page reload.
 
