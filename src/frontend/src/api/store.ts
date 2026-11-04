@@ -79,7 +79,9 @@ export class Store {
   apply(msg: Outgoing): void {
     switch (msg.type) {
       case "welcome":
-        return this.update({ welcome: msg });
+        // a new connection: the backend sends its last 300 lines next, which
+        // include the ones on screen; keeping both would show lines twice
+        return this.update({ welcome: msg, log: [] });
       case "state":
         this.clock.update(msg.now);
         return this.update({ state: msg });

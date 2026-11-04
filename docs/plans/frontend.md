@@ -343,9 +343,30 @@ Done when:
 
 - [ ] by hand with `./dod sim`: it opens on a full screen of lines (the
   history), keeps scrolling at 3–8 lines a second, bursts when a phone's
-  loading screen runs; a reload is full again at once
-- [ ] without the key: an error screen, no lines
-- [ ] runs an hour in Edge without the tab's memory growing (Task Manager)
+  loading screen runs; a reload is full again at once – **needs a browser**;
+  the same with the fake WebSocket in Vitest: passes
+- [x] without the key: an error screen, no lines (Vitest)
+- [ ] runs an hour in Edge without the tab's memory growing (Task Manager) –
+  **needs a browser**
+
+Built:
+
+- `screens/Logging.tsx` + `styles/logging.css`: the terminal over the whole
+  window (`position: fixed; inset: 0`), its font a bit larger than in the
+  main screen's panel (`--term-font`, 12–17 px); the badge bottom right, at
+  55 % while all is well, fully visible and larger when it is red.
+- `routes.tsx`: a screen per role; the phone and the main screen still show
+  the hello page.
+- fixed on the way, in the store (step 2): a reconnect got the backend's
+  history again and added it below the lines already on screen – before
+  there are 300 lines, every line would have shown twice. A `welcome` now
+  starts the log over; the history right after it fills it again.
+- tests through the real route, store and socket, with the fake WebSocket:
+  the key, the history first and new lines below, the oldest leaving at
+  300, a dead backend (red badge, the lines stay), a reconnect without
+  doubled lines, no key → error. 91 frontend tests, ~2.5 s; undoing the
+  store fix makes two of them fail.
+- checked by hand: the build; `./dod sim` serves the page and its modules.
 
 ### Step 5. The phone (`/`)
 

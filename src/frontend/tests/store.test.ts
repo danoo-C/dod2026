@@ -54,6 +54,14 @@ describe("Store", () => {
     expect(Math.round(store.clock.offsetMs / 1000)).toBe(30);
   });
 
+  it("a new welcome starts the log over: the history that follows has the lines", () => {
+    store.apply({ type: "log", lines: [line(1), line(2)] });
+    store.apply(WELCOME);
+    expect(store.get().log).toEqual([]);
+    store.apply({ type: "log", lines: [line(1), line(2), line(3)] });
+    expect(store.get().log.map((l) => l.t)).toEqual([1, 2, 3]);
+  });
+
   it("keeps the last 300 log lines", () => {
     store.apply({ type: "log", lines: Array.from({ length: 250 }, (_, i) => line(i)) });
     store.apply({ type: "log", lines: Array.from({ length: 100 }, (_, i) => line(250 + i)) });

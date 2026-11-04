@@ -15,16 +15,16 @@ note) and the design in [backend.md](backend.md).
   control and use the admin commands; every browser gets state, its own queue
   position and live previews over the WebSocket; `main` and `logging` get the
   fake logs, starting with the last 300 lines.
-- **Frontend: steps 1–3 of 8 done** (tooling, the connection, the shared
-  components). React + Vite in `src/frontend/`, `./dod sim` runs the backend
+- **Frontend: steps 1–4 of 8 done** (tooling, the connection, the shared
+  components, the logging page). React + Vite in `src/frontend/`, `./dod sim` runs the backend
   and Vite together on http://localhost:5173. Every screen connects with its
   role and reconnects by itself; the components (preview, terminal, loading
   screen, QR, countdown, badge, toast) have the mockup's look, and
-  http://localhost:5173/components.html shows them all with fake data. Every
-  route still shows a hello page, now with the live preview, badge and
-  terminal.
+  http://localhost:5173/components.html shows them all with fake data.
+  `/internal/logging` is the real terminal page; the phone and the main
+  screen still show a hello page with the live preview, badge and terminal.
 - **Tests:** `./dod test` is green – HCL 165 tests (~23 s), backend 424
-  (~19 s), frontend 81 (~2 s, plus the type checks).
+  (~19 s), frontend 91 (~2.5 s, plus the type checks).
 - **Git:** `dod2026/` is its own repo (branch `main`, no remote yet).
 
 | Step | What | State |
@@ -61,12 +61,15 @@ note) and the design in [backend.md](backend.md).
    - http://localhost:5173/components.html: every component looks like the
      mockup (`docs/preview.html`), the terminal scrolls, the loading screen
      runs 2–4 s
+   - http://localhost:5173/internal/logging?key=dev: opens full of lines,
+     keeps scrolling, a reload is full again at once; left open for an hour
+     in Edge, the tab's memory stays flat (Task Manager)
    For a phone, WSL's NAT mode needs a change on Windows first (frontend
    plan, step 1, "Built").
-3. **Frontend step 4** (the logging page: the terminal full screen) –
-   recommended next, it needs no input, and it is the first real screen.
-   Steps 4–6 need nothing from the backend's open steps; step 7 (music)
-   waits for backend step 8. `docs/preview.html` is the clickable mockup the
+3. **Frontend step 5** (the phone: queue, loading, controls built from the
+   presets' parameters, drawing, songs, time's up) – recommended next, it
+   needs no input. Steps 5–6 need nothing from the backend's open steps;
+   step 7 (music) waits for backend step 8. `docs/preview.html` is the clickable mockup the
    screens follow.
 
 ## How to pick up

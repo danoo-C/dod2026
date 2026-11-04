@@ -27,12 +27,23 @@ describe("routes", () => {
 
   it.each(SCREENS)("$path connects as $role", async ({ path, role }) => {
     render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
-    expect(screen.getByText(role)).toBeTruthy();
-    expect(screen.getByTestId("status").textContent).toBe("Pripájam…");
     await act(() => vi.advanceTimersByTimeAsync(0));
     expect(FakeWebSocket.last.url).toBe(`ws://localhost:3000/ws?role=${role}`);
     act(() => FakeWebSocket.last.accept());
+  });
+
+  it.each(SCREENS.filter((s) => s.role !== "logging"))("$path is still the hello page", async ({ path, role }) => {
+    render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: [path] })} />);
+    expect(screen.getByText(role)).toBeTruthy();
+    expect(screen.getByTestId("status").textContent).toBe("Pripájam…");
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    act(() => FakeWebSocket.last.accept());
     expect(screen.getByTestId("status").textContent).toBe("Pripojené");
     expect(screen.getByTestId("session").textContent).toBe("7f3a");
+  });
+
+  it("/internal/logging is the terminal", () => {
+    render(<RouterProvider router={createMemoryRouter(routes, { initialEntries: ["/internal/logging"] })} />);
+    expect(screen.getByRole("region", { name: "Terminál" })).toBeTruthy();
   });
 });
