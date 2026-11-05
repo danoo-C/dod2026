@@ -54,12 +54,13 @@ class LinkOptions:
     incompatible_ping_ms: float = 5000  # PING an incompatible board, in case it gets new code
     max_ack_timeouts: int = 3  # this many in a row = the board is gone
     partial_timeout_ms: float = 50  # drop a message that doesn't complete
+    late_hello_ms: float = 1000  # a HELLO this soon after a PING, with nothing else since, answers that PING
     backoff_ms: tuple[float, ...] = (500, 1000, 2000, 5000)  # waits between reconnect attempts
     event_queue: int = 1000  # events kept per listener that doesn't keep up
 
     def __post_init__(self) -> None:
         for name in ("ack_timeout_ms", "hello_timeout_ms", "keepalive_ms", "max_fps",
-                     "ping_interval_ms", "incompatible_ping_ms", "partial_timeout_ms"):
+                     "ping_interval_ms", "incompatible_ping_ms", "partial_timeout_ms", "late_hello_ms"):
             if getattr(self, name) <= 0:
                 raise ValueError(f"link option {name} must be positive")
         if self.max_ack_timeouts < 1 or self.event_queue < 1:
@@ -150,6 +151,8 @@ class Link:
         self._last_send = float("-inf")
         self._timeouts_in_row = 0
         self._next_ping = 0.0
+        self._last_ping = float("-inf")
+        self._garbage_at_hello = 0  # the parser's garbage count at the last HELLO
 
     # --- public API -----------------------------------------------------
 
@@ -294,6 +297,8 @@ class Link:
         now = time.monotonic()
         hello_deadline = now + o.hello_timeout_ms / 1000
         self._next_ping = now
+        self._last_ping = float("-inf")
+        self._garbage_at_hello = 0  # a new parser counts from 0
         last_rx = now
 
         while not self._stop.is_set():
@@ -304,10 +309,12 @@ class Link:
                     raise _SessionEnded(f"no HELLO from the board within {o.hello_timeout_ms / 1000:g} s")
                 if now >= self._next_ping:
                     self._write(protocol.encode(protocol.PING))
+                    self._last_ping = now
                     self._next_ping = now + o.ping_interval_ms / 1000
             elif state is LinkState.INCOMPATIBLE:
                 if now >= self._next_ping:
                     self._write(protocol.encode(protocol.PING))
+                    self._last_ping = now
                     self._next_ping = now + o.incompatible_ping_ms / 1000
             else:
                 self._send_step(now)
@@ -356,6 +363,8 @@ class Link:
             version = protocol.hello_version(payload)
         except ValueError:
             return
+        if self._late_hello(payload, now):
+            return
         self._in_flight = None  # a HELLO means the board (re)started: no ACK is coming
         if version != protocol.PROTOCOL_VERSION:
             self._next_ping = now + self._o.incompatible_ping_ms / 1000
@@ -377,6 +386,8 @@ class Link:
         device = DeviceInfo(protocol=version, firmware=firmware, led_count=led_count,
                             color_order=color_order, simulated=self._t.simulated)
         rebooted = self._state is LinkState.CONNECTED
+        if self._parser is not None:
+            self._garbage_at_hello = self._parser.garbage_count
         self._timeouts_in_row = 0
         self._resend = self._last_frame is not None
         with self._lock:
@@ -384,6 +395,29 @@ class Link:
             self._device = device
             self._connected_since = time.time()
         self._emit(Connected(device, rebooted=rebooted))
+
+    def _late_hello(self, payload: bytes, now: float) -> bool:
+        """A second HELLO that only answers one of our PINGs, not a reboot.
+
+        While connecting, the link PINGs every ping_interval_ms. A real board
+        that is still booting queues them and, once main.py runs, may answer
+        them all – each answer is a HELLO. A reboot looks different: it takes
+        more than a second, and the ESP32 prints its boot text before HELLO.
+        So: connected already, the same board, within late_hello_ms of the last
+        PING, and no other bytes since the last HELLO -> a late answer.
+        """
+        if self._state is not LinkState.CONNECTED or self._device is None or self._parser is None:
+            return False
+        if now - self._last_ping > self._o.late_hello_ms / 1000:
+            return False
+        if self._parser.garbage_count != self._garbage_at_hello:
+            return False  # boot text came first: the board really restarted
+        try:
+            _, firmware, led_count, color_order = protocol.parse_hello(payload)
+        except ValueError:
+            return False
+        d = self._device
+        return (firmware, led_count, color_order) == (d.firmware, d.led_count, d.color_order)
 
     def _send_step(self, now: float) -> None:
         o = self._o

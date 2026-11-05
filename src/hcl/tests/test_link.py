@@ -223,6 +223,52 @@ async def test_board_reboot():
         assert rig.status.state is LinkState.CONNECTED
 
 
+class QueueingBoard(Transport):
+    """Like the real ESP32 (found in HCL stage 2): while it boots, the host's
+    PINGs queue up in the USB serial buffer; once main.py runs it sends HELLO
+    and answers every queued PING with another HELLO."""
+
+    def __init__(self, boot_s=0.2):
+        self.boot_s = boot_s
+        self.opened = 0.0
+        self.pings = 0
+        self.out = b""
+        self.answered = False
+
+    def open(self):
+        self.opened = time.monotonic()
+
+    def write(self, data):
+        if p.encode(p.PING) in data:
+            self.pings += 1
+            if self.answered:
+                self.out += HELLO_BYTES
+
+    def read(self, max_bytes, timeout):
+        if not self.answered and time.monotonic() - self.opened >= self.boot_s:
+            self.answered = True
+            self.out += HELLO_BYTES * (1 + self.pings)  # its own HELLO, then one per queued PING
+        time.sleep(min(timeout, 0.005))
+        data, self.out = self.out[:max_bytes], self.out[max_bytes:]
+        return data
+
+    def close(self):
+        pass
+
+
+HELLO_BYTES = p.encode(p.HELLO, p.hello_payload((1, 0, 0), 10, "GRB"))
+
+
+@run
+async def test_queued_ping_answers_are_not_reboots():
+    board = QueueingBoard(boot_s=0.2)
+    async with Rig(transport=board, ping_interval_ms=50) as rig:
+        first = await next_of(rig.stream, Connected)
+        assert first.rebooted is False and board.pings >= 3  # several PINGs queued while it booted
+        with pytest.raises(TimeoutError):  # their answers: no second Connected, no "reboot"
+            await next_of(rig.stream, Connected, timeout=0.3)
+
+
 @run
 async def test_reconnects_after_an_unplug():
     async with Rig("sim?unplug_every=0.3&unplug_for=0.2") as rig:

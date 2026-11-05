@@ -12,6 +12,9 @@
 #   ./dod songs [id ...]                   download the songs from songs.txt missing from cache/
 #   ./dod shell                            a shell in the container
 #   ./dod hcl <tool> [args]                HCL tools: monitor, pattern, bench, repl (docs/hcl.md section 9)
+#   ./dod esp upload                       put src/hcl/esp/ (and protocol.py) on the board, reset it
+#   ./dod esp run <file.py>                run a MicroPython script on the board (it prints to here)
+#   ./dod esp repl                         a Python prompt on the board
 #
 # The project is mounted at /work. DOD_SERIAL says which board to talk to:
 # "sim" (default, the simulated board), /dev/ttyUSB0, or socket://host:port.
@@ -46,7 +49,7 @@ BACKEND_CMD=(sh -c 'python -c "from dod.main import settings_or_exit; settings_o
              --reload --reload-dir src/backend --reload-dir src/hcl --ws-max-size 65536)
 
 usage() {
-    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | shell | hcl <monitor|pattern|bench|repl> [args]" >&2
+    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | shell | hcl <monitor|pattern|bench|repl> [args] | esp <upload|run|repl>" >&2
     exit 1
 }
 
@@ -62,6 +65,21 @@ fi
 if [[ "$1" == "build" ]]; then
     exec docker build -t "$IMAGE" "$DIR"
 fi
+
+# The board's serial port: ESP_PORT, else the first one found; empty without a board
+find_port() {
+    if [[ -n "${ESP_PORT:-}" ]]; then
+        echo "$ESP_PORT"
+        return
+    fi
+    local p
+    for p in /dev/ttyUSB* /dev/ttyACM*; do
+        if [[ -e "$p" ]]; then
+            echo "$p"
+            return
+        fi
+    done
+}
 
 # docker run arguments shared by every command
 docker_args() {
@@ -83,15 +101,8 @@ docker_args() {
         args+=(-t)
     fi
 
-    local port="${ESP_PORT:-}"
-    if [[ -z "$port" ]]; then
-        for p in /dev/ttyUSB* /dev/ttyACM*; do
-            if [[ -e "$p" ]]; then
-                port="$p"
-                break
-            fi
-        done
-    fi
+    local port
+    port="$(find_port)"
     if [[ -n "$port" ]]; then
         # The port's owning group (usually dialout) is what grants access to it.
         args+=(--device "$port" --group-add "$(stat -c %g "$port")" -e ESPTOOL_PORT="$port")
@@ -280,11 +291,53 @@ case "$1" in
         docker_args
         exec docker run "${args[@]}" "$IMAGE" bash
         ;;
+    esp)
+        # the board's own code (docs/hcl.md 7, 9). main.py turns Ctrl-C off, so
+        # first `hcl repl` asks it to step aside (exit 2: it didn't answer, fine
+        # when the board is at the >>> prompt already), then mpremote takes over.
+        sub="${2:-}"
+        docker_args
+        if [[ ! " ${args[*]} " == *" ESPTOOL_PORT="* ]]; then
+            echo "dod: no board found (usbipd attach --wsl --busid <id>, see ~/spseke/esp/setup/README.md)" >&2
+            exit 1
+        fi
+        step_aside='python -m hcl.tools.repl --url "$ESPTOOL_PORT"; s=$?; [ $s -le 2 ] || exit $s'
+        case "$sub" in
+            upload)
+                exec docker run "${args[@]}" "$IMAGE" sh -c "$step_aside"'
+                    cd src/hcl && mpremote connect "$ESPTOOL_PORT" \
+                        cp esp/boot.py esp/config.py esp/max7219.py hcl/protocol.py : + \
+                        cp esp/main.py : + reset'
+                ;;
+            run)
+                [[ -n "${3:-}" ]] || { echo "usage: ./dod esp run <file.py>" >&2; exit 2; }
+                exec docker run "${args[@]}" "$IMAGE" sh -c "$step_aside"'
+                    mpremote connect "$ESPTOOL_PORT" run "$1"' sh "$3"
+                ;;
+            repl)
+                exec docker run "${args[@]}" "$IMAGE" sh -c "$step_aside"'
+                    mpremote connect "$ESPTOOL_PORT" repl'
+                ;;
+            *)
+                echo "usage: ./dod esp upload | run <file.py> | repl" >&2
+                exit 2
+                ;;
+        esac
+        ;;
     hcl)
         tool="${2:-}"
         if [[ ! " ${HCL_TOOLS[*]} " == *" $tool "* ]]; then
             echo "dod: unknown HCL tool '$tool', pick one of: ${HCL_TOOLS[*]}" >&2
             exit 1
+        fi
+        # The tools are for the board: with one attached and no DOD_SERIAL given,
+        # they talk to it, not to the simulator (DOD_SERIAL=sim ./dod hcl … for that).
+        if [[ -z "${DOD_SERIAL:-}" ]]; then
+            board="$(find_port)"
+            if [[ -n "$board" ]]; then
+                export DOD_SERIAL="$board"
+            fi
+            echo "dod: hcl $tool on ${DOD_SERIAL:-sim (no board attached)}" >&2
         fi
         docker_args
         exec docker run "${args[@]}" "$IMAGE" python -m "hcl.tools.$tool" "${@:3}"

@@ -345,6 +345,45 @@ attached to WSL (`usbipd attach --wsl --busid <id>`).
 Done when the **(verify)** items in hcl.md 4.2, 5.4 and 7.2 are answered and
 the answers are written into hcl.md.
 
+Status (2026-11-04):
+
+- [x] 1. board code: `src/hcl/esp/boot.py`, `config.py` (the real wiring:
+  strip on 15; 8x8 DIN 21, CLK 18, CS 19, hardware SPI 2 routed there with
+  its MISO on the free input-only GPIO39, because its default MISO is 19),
+  `max7219.py` (only changed rows are sent; `MATRIX_MIRROR` / `MATRIX_FLIP`
+  for how the module is mounted), `main.py`. `./dod esp upload | run <file> |
+  repl` in the wrapper: `hcl repl` asks main.py to step aside first (exit 2,
+  "didn't answer", is fine when the board is at `>>>` already), then mpremote.
+  The board runs **MicroPython v1.13 (2020)** – everything works on it, but
+  a newer one would not hurt (~/spseke/esp/setup/README.md, "Flashing").
+- [x] 2. protocol on MicroPython: `src/hcl/esp_tests/protocol_selftest.py`
+  with `./dod esp run`: every message type, all 256 byte values, resync –
+  11 of 11 pass with the board's own `protocol.py`.
+- [x] 3. wiring: `./dod hcl pattern` – checked by eye: red, green and blue are
+  right with `COLOR_ORDER = "GRB"`; "row 1 from the top" and "column 1 from
+  the left" are where they should be, so no `MATRIX_FLIP` / `MATRIX_MIRROR`.
+  Also `src/hcl/esp_tests/strip_test.py`: the strip straight from the board,
+  no host, for when the strip stays dark.
+- [x] 4. speed: `./dod hcl bench` – **66 fps**, round trip 15 ms (14.7–18.1),
+  no ACK timeouts, no reconnects over 20 s: PASS. `monitor --send` at the
+  show's rate: 29.5 fps, 12.8 ms.
+- [ ] 5. the board's behaviour – **needs your hands**: unplug and replug,
+  press EN, stop the backend (idle animation after 3 s), hold BOOT after EN
+  (stays at `>>>`), `./dod esp upload` afterwards.
+- [x] the (verify) items: opening the port **does** reset the board (4.2);
+  all 256 byte values pass both ways (5.4); the byte-by-byte reading doesn't
+  stall (7.2) – written into hcl.md.
+- `./dod hcl <tool>` uses the attached board when `DOD_SERIAL` isn't set (and
+  says which: "dod: hcl pattern on /dev/ttyUSB0"); before, it quietly used the
+  simulator, and a pattern run showed nothing on the real strip.
+  `DOD_SERIAL=sim ./dod hcl …` for the simulator.
+- found on the real board, fixed: the PINGs the host sends while waiting
+  queued up during the boot, and the board answered each with a HELLO – every
+  connect looked like three reboots. The board drops them before its first
+  HELLO; the link (`late_hello_ms`) takes a HELLO within 1 s of a PING with no
+  boot text before it as that PING's answer. A test with a queueing fake board
+  (`test_queued_ping_answers_are_not_reboots`); 166 HCL tests.
+
 ## Stage 3 – teacher's notebook
 
 Needs: Docker Desktop on the notebook (tech-spec 6.1), the board.

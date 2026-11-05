@@ -34,8 +34,8 @@ to test on the real hardware and notebook (phases 3 and 4 in the plan). Items ma
 
 | Part | Bus | ESP32 pins (proposed) | Notes |
 |---|---|---|---|
-| addressable RGB strip, 10 LEDs, unmarked – assumed WS2812B | 1 data wire | GPIO13 | 5 V, see power below |
-| 8x8 single-colour LED matrix, MAX7219 module (chip marked `MAX7219ENG`) | SPI-like: DIN, CLK, CS | DIN 23, CLK 18, CS 5 (hardware SPI) | runs on 5 V, write-only, 16 brightness levels |
+| addressable RGB strip, 10 LEDs, unmarked – assumed WS2812B | 1 data wire | GPIO15 (wired; 13 was proposed) | 5 V, see power below |
+| 8x8 single-colour LED matrix, MAX7219 module (chip marked `MAX7219ENG`) | SPI-like: DIN, CLK, CS | DIN 21, CLK 18, CS 19 (wired; hardware SPI routed there, its MISO moved to the free GPIO39) | runs on 5 V, write-only, 16 brightness levels |
 
 The 8x8 module is **not I2C**: the MAX7219 has no I2C interface. It takes 3 signal wires (DIN, CLK, CS) and is driven with
 `machine.SPI`. `ENG` on the chip usually means a clone or an engineering
@@ -85,10 +85,10 @@ Things to get right on the hardware side:
   ```
   5 V supply + ──┬──────────── strip 5V
                  └──────────── matrix VCC
-  ESP32 GPIO13 ── 330 Ω ────── strip DIN
-  ESP32 GPIO23 ─────────────── matrix DIN   (input side of the module)
+  ESP32 GPIO15 ── 330 Ω ────── strip DIN
+  ESP32 GPIO21 ─────────────── matrix DIN   (input side of the module)
   ESP32 GPIO18 ─────────────── matrix CLK
-  ESP32 GPIO5  ─────────────── matrix CS
+  ESP32 GPIO19 ─────────────── matrix CS
   ESP32 GND ── 5 V supply − ── strip GND ── matrix GND
   1000 µF across strip 5V / GND, as close to the strip as possible
   ESP32 itself: powered over USB from the notebook

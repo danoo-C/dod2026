@@ -258,10 +258,15 @@ DISCONNECTED ─────────────────▶ CONNECTING �
 
 - **Opening:** DTR and RTS are set off before the port opens
   (`serial_for_url(..., do_not_open=True)`, then `dtr = rts = False`, then
-  `open()`), so opening it doesn't reset the board. If it resets anyway
-  **(verify)**, the board sends HELLO after booting, which is why the HELLO
-  timeout is 5 s and not shorter. Input is flushed, then PING, repeated every
-  500 ms until HELLO comes.
+  `open()`, so opening it shouldn't reset the board. **Verified (stage 2,
+  2026-11-04): it resets anyway** – on WSL with the CP2102 the ESP32's boot
+  text (~1.6 kB) arrives right after opening. So the board sends HELLO after
+  booting, which is why the HELLO timeout is 5 s and not shorter. Input is
+  flushed, then PING, repeated every 500 ms until HELLO comes. The board
+  queues those PINGs while it boots; it drops them before its first HELLO,
+  and a HELLO within `late_hello_ms` (1 s) of a PING with no boot text before
+  it counts as that PING's answer, not as a reboot – without this, every
+  connect looked like three reboots.
 - **Reconnecting:** after an error the link waits 0.5, 1, 2, then 5 s between
   attempts, forever. Unplugging and replugging the board needs nothing else.
 - **Unexpected HELLO** while connected means the board rebooted:
@@ -335,9 +340,11 @@ consequences:
 - byte `0x03` (Ctrl-C) inside a frame would stop the program, so `main.py`
   calls `micropython.kbd_intr(-1)` once it runs
 - `main.py` must never `print()`; everything goes through LOG frames
-- **(verify)** that `sys.stdin.buffer` / `sys.stdout.buffer` pass all 256 byte
-  values through unchanged (no `\n` → `\r\n`) – the checksum would catch it,
-  but every frame would fail
+- `sys.stdin.buffer` / `sys.stdout.buffer` pass all 256 byte values through
+  unchanged (no `\n` → `\r\n`) – **verified (stage 2)**: board → host, HELLO
+  carries 0x0A (10 LEDs) and parses; host → board, `./dod hcl bench` cycles
+  every value 0–255 through the strip, the 8x8 and the seq, 1319 frames, all
+  ACKed, no timeouts (MicroPython v1.13)
 
 ### 5.5 One protocol file for both sides
 
@@ -419,15 +426,19 @@ the HCL use `hcl.testing` (section 3.6).
 | `protocol.py` | copied from `hcl/protocol.py` on upload |
 
 ```python
-# config.py
+# config.py (the real wiring, stage 2)
 FIRMWARE = (1, 0, 0)
-STRIP_PIN = 13
+STRIP_PIN = 15
 LED_COUNT = 10
 COLOR_ORDER = "GRB"     # check with ./dod hcl pattern
-SPI_ID = 2              # hardware SPI: CLK 18, DIN (MOSI) 23
-MATRIX_CS = 5
+MATRIX_DIN, MATRIX_CLK, MATRIX_CS = 21, 18, 19
+SPI_ID = 2              # hardware SPI, routed to those pins
+SPI_MISO_UNUSED = 39    # SPI 2's default MISO is 19, the CS here; 39 is input-only and free
 SPI_BAUD = 1_000_000    # lower this first if the 8x8 glitches
+MATRIX_MIRROR = False   # check with ./dod hcl pattern
+MATRIX_FLIP = False
 IDLE_AFTER_MS = 3000
+BOOT_BUTTON = 0
 ```
 
 ### 7.2 `main.py`
@@ -436,9 +447,12 @@ IDLE_AFTER_MS = 3000
    is held, return – the board stays in the REPL (see section 9).
 2. `micropython.kbd_intr(-1)`, set up the strip and the matrix, send HELLO.
 3. Loop:
-   - poll `sys.stdin` (`select.poll`, ~5 ms timeout) and feed available bytes
-     to the parser. Once a header is in, the rest of the frame is read in one
-     `read(n)` **(verify that it doesn't stall)**.
+   - poll `sys.stdin` (`select.poll`, ~2 ms timeout) and read what arrived
+     byte by byte into a small state machine (magic, header, payload +
+     checksum); a half message older than 50 ms is dropped. Built that way
+     instead of one `read(n)` after the header: a lost byte would have made
+     `read(n)` wait for the next message. **Verified (stage 2)**: 66 fps, no
+     stall, no ACK timeouts over 20 s.
    - **FRAME:** copy the strip bytes into the NeoPixel buffer (`np.buf[:] =
      strip`), `np.write()`, write the 8 rows and the brightness to the
      MAX7219, send ACK with the frame's seq
