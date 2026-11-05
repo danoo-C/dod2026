@@ -1,5 +1,15 @@
-# The image only needs the files that define its dependencies; the source is
-# mounted at runtime. Everything else stays out of the build context.
+# The dev image needs only the files that define its dependencies; the
+# notebook image also copies the source in (Dockerfile). Everything else, and
+# anything built or installed locally, stays out of the build context.
 *
 !src/hcl/pyproject.toml
 !src/backend/pyproject.toml
+!src/hcl/hcl/
+!src/backend/dod/
+!src/backend/schema/
+!src/frontend/
+src/frontend/node_modules/
+src/frontend/dist/
+**/__pycache__/
+**/*.egg-info/
+**/.pytest_cache/

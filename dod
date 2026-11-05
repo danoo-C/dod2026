@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Dev wrapper for DOD 2026. Every tool runs in Docker, nothing is installed in WSL.
 #
-#   ./dod build                            (re)build the image
+#   ./dod build                            (re)build the dev image
 #   ./dod test [hcl|backend|frontend] [args]  run the tests: all three suites, or one
 #   ./dod backend                          the backend on http://localhost:8000, reloads on every save
 #   ./dod sim                              backend + Vite on http://localhost:5173, simulated board
@@ -11,6 +11,7 @@
 #   ./dod schema                           write the WebSocket messages' JSON Schema and TypeScript types
 #   ./dod songs [id ...]                   download the songs from songs.txt missing from cache/
 #   ./dod backend-soak [--minutes 30]      the soak test: the whole backend under a simulated open day
+#   ./dod notebook                         build the notebook's self-contained image and run it here (simulated board)
 #   ./dod shell                            a shell in the container
 #   ./dod hcl <tool> [args]                HCL tools: monitor, pattern, bench, repl (docs/hcl.md section 9)
 #   ./dod esp upload                       put src/hcl/esp/ (and protocol.py) on the board, reset it
@@ -50,7 +51,7 @@ BACKEND_CMD=(sh -c 'python -c "from dod.main import settings_or_exit; settings_o
              --reload --reload-dir src/backend --reload-dir src/hcl --ws-max-size 65536)
 
 usage() {
-    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | backend-soak [--minutes N] | shell | hcl <monitor|pattern|bench|repl> [args] | esp <upload|run|repl>" >&2
+    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | backend-soak [--minutes N] | notebook | shell | hcl <monitor|pattern|bench|repl> [args] | esp <upload|run|repl>" >&2
     exit 1
 }
 
@@ -64,7 +65,7 @@ if [[ $# -eq 0 ]]; then
 fi
 
 if [[ "$1" == "build" ]]; then
-    exec docker build -t "$IMAGE" "$DIR"
+    exec docker build --target dev -t "$IMAGE" "$DIR"
 fi
 
 # The board's serial port: ESP_PORT, else the first one found; empty without a board
@@ -85,7 +86,7 @@ find_port() {
 # docker run arguments shared by every command
 docker_args() {
     if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
-        docker build -t "$IMAGE" "$DIR" >&2
+        docker build --target dev -t "$IMAGE" "$DIR" >&2
     fi
     # Run as the calling user, so files written to /work are not owned by root.
     args=(--rm --init -i -v "$DIR:/work" -w /work --user "$(id -u):$(id -g)"
@@ -257,6 +258,26 @@ case "$1" in
         # The dev key opens the internal pages: /internal/main?key=dev (docs/backend.md 9).
         args+=(--name dod2026-backend -p "$PORT_HTTP:$PORT_HTTP" -e DOD_INTERNAL_KEY="${DOD_INTERNAL_KEY:-dev}")
         exec docker run "${args[@]}" "$IMAGE" "${BACKEND_CMD[@]}"
+        ;;
+    notebook)
+        # The image start.ps1 runs on the notebook (Dockerfile, target notebook),
+        # tried here first: nothing mounted but cache/, the simulated board unless
+        # DOD_SERIAL says otherwise. http://localhost:8000, /internal/main?key=dev
+        docker build -t dod2026-notebook "$DIR"
+        nb=(--rm --init -i --name dod2026-notebook -p "$PORT_HTTP:$PORT_HTTP" -v "$DIR/cache:/work/cache"
+            -e DOD_SERIAL="${DOD_SERIAL:-sim}" -e DOD_INTERNAL_KEY="${DOD_INTERNAL_KEY:-dev}")
+        if [[ -t 0 ]]; then
+            nb+=(-t)
+        fi
+        # DOD_SERIAL=/dev/ttyUSB0 ./dod notebook: the board goes in too
+        if [[ "${DOD_SERIAL:-sim}" == /dev/* ]]; then
+            if [[ ! -e "$DOD_SERIAL" ]]; then
+                echo "dod: DOD_SERIAL=$DOD_SERIAL but no such port, is the board attached? (usbipd attach --wsl --busid <id>)" >&2
+                exit 1
+            fi
+            nb+=(--device "$DOD_SERIAL" --group-add "$(stat -c %g "$DOD_SERIAL")")
+        fi
+        exec docker run "${nb[@]}" dod2026-notebook
         ;;
     sim)
         dev_stack sim

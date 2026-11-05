@@ -404,6 +404,18 @@ only a different URL (`/dev/ttyUSB0`), nothing else changes.
 This stage is the riskiest part of the whole project, so it happens as soon
 as the notebook is available, not after the backend and frontend.
 
+Status (2026-11-05):
+
+- [~] 1. written, **not run on Windows yet**: `src/hcl/bridge/serial-bridge.ps1`,
+  and with it the launcher – `start.bat`, `windows/start.ps1` (tech-spec 6.3)
+  and the notebook's self-contained image (the Dockerfile's `notebook`
+  stage; `./dod build` now builds `--target dev`). `./dod notebook` builds
+  and runs that image in WSL with the simulated board.
+- [ ] 2.–4. on the notebook. Before that, on this PC: `usbipd detach` the
+  board so Windows sees it as COMx, run the bridge in Windows PowerShell,
+  and check it with a client from Windows (or `start.bat` if Docker Desktop
+  is here).
+
 ## Order and dependencies
 
 ```

@@ -457,26 +457,48 @@ Desktop's kernel. **(verify)** – fallback if A is too slow.
 ### 6.3 What `start.bat` does
 
 `start.bat` only runs `powershell -ExecutionPolicy Bypass -File windows\start.ps1`
-(a double-clicked `.ps1` opens in Notepad, a `.bat` runs). `start.ps1`:
+(a double-clicked `.ps1` opens in Notepad, a `.bat` runs), and passes its
+options on. `start.ps1`:
 
 1. starts Docker Desktop if it is not running and waits for `docker info`
-2. finds the board's COM port by its USB ID (CP2102: `VID_10C4&PID_EA60`),
-   or tells you to plug it in and waits
-3. starts the serial ↔ TCP bridge (6.2 A)
-4. builds the image if it is missing (`docker build -t dod2026 .`)
+2. finds the board's COM port by its USB ID (CP2102: `VID_10C4&PID_EA60`;
+   CH340 and CH9102 too, for a replacement board), or tells you to plug it in
+   and waits
+3. starts the serial ↔ TCP bridge (6.2 A) in a hidden window, with its own
+   process id, so the bridge stops by itself if `start.ps1` is killed
+4. builds the image if it is missing (`docker build -t dod2026-notebook .`:
+   the Dockerfile's default stage, `notebook`, with the source and the built
+   frontend inside; `./dod notebook` builds and runs the same image in WSL)
 5. finds the notebook's hotspot address, so the main screen can show
    `http://<ip>:8000` as a QR code for phones, reads the hotspot's name and
-   password for the Wi-Fi QR code, and makes a random internal key
-6. `docker run --rm --name dod2026 -p 8000:8000 -v .\cache:/work/cache -e DOD_SERIAL=socket://host.docker.internal:7777 -e DOD_PUBLIC_URL=http://<ip>:8000 -e DOD_INTERNAL_KEY=<key> -e DOD_WIFI_SSID=<name> -e DOD_WIFI_PASSWORD=<password> dod2026`
-7. opens `http://localhost:8000/internal/main?key=<key>` as one full-screen
-   browser window (Edge is built into Windows:
-   `msedge --app=<url> --start-fullscreen`). The browser may block audio until
-   the first click, so the page shows a "Spustiť" button once at the start.
-8. when the window is closed or Ctrl-C is pressed: stops the container and the bridge
+   password for the Wi-Fi QR code (through Windows' tethering API,
+   **(verify)** that it works without admin rights), and makes a random
+   internal key
+6. `docker run -d --init --name dod2026 -p 8000:8000 -v <project>\cache:/work/cache -e DOD_SERIAL=socket://host.docker.internal:7777 -e DOD_PUBLIC_URL=http://<ip>:8000 -e DOD_INTERNAL_KEY=<key> -e DOD_WIFI_SSID -e DOD_WIFI_PASSWORD dod2026-notebook`;
+   the values go through the environment (`-e NAME` without a value), so
+   no quoting can break a password
+7. waits for `/api/status`, then opens `http://localhost:8000/internal/main?key=<key>`
+   as one full-screen Edge window (built into Windows:
+   `msedge --app=<url> --start-fullscreen`) with its own profile in
+   `%TEMP%\dod2026\edge` – otherwise an Edge that is already open takes the
+   window over, and closing it couldn't be noticed. The page still shows
+   "Spustiť" once at the start, for the audio.
+8. keeps watch: the bridge is restarted if it stops; when the window is
+   closed, the backend stops, or Ctrl-C is pressed, it saves the backend's
+   log and stops the container and the bridge. Logs of the last run:
+   `%TEMP%\dod2026\` (`bridge.log`, `backend.log`).
+
+Leftovers from a run that didn't stop cleanly (the console closed with X)
+are cleaned up at the next start: an old bridge holding the COM port, the old
+container.
+
+Options: `start.bat -Simulated` (no board, no bridge), `-Port COM5` (if
+finding the board fails), `-Rebuild` (after the code changed),
+`-WifiSsid NAME -WifiPassword PASS` (if reading the hotspot fails).
 
 The image is built and tested on the notebook **before** the day. Building
-needs internet (pip, apt); a `docker save` of the working image on a USB stick
-is the backup.
+needs internet (pip, apt, npm); a `docker save` of the working image on a USB
+stick is the backup.
 
 ### 6.4 Network: the notebook's hotspot
 
@@ -511,7 +533,8 @@ phones, so its client isolation does not matter.
 
 ### 6.5 Removing it from the notebook afterwards
 
-1. `docker rmi dod2026` (removes the image), delete the project folder
+1. `docker rmi dod2026-notebook` (removes the image), delete the project folder
+   and `%TEMP%\dod2026` (the last run's logs, Edge's profile for the stand)
 2. uninstall Docker Desktop in Settings → Apps, if the teacher doesn't want
    to keep it
 3. `wsl --unregister docker-desktop` if anything of it is left over
@@ -525,7 +548,7 @@ tools run in the Docker image, behind one wrapper script, `./dod`.
 ### 7.1 Commands
 
 ```sh
-./dod build            # (re)build the image
+./dod build            # (re)build the dev image (the Dockerfile's dev stage)
 ./dod test             # each suite on its own: src/hcl, src/backend (pytest), src/frontend (tsc + Vitest)
 ./dod test backend -x  # one suite; a path picks its suite too: ./dod test src/backend/tests/test_imports.py
 ./dod backend          # the backend alone on http://localhost:8000, reloads on every save, DOD_INTERNAL_KEY=dev
@@ -536,16 +559,12 @@ tools run in the Docker image, behind one wrapper script, `./dod`.
 ./dod schema           # the WebSocket messages' JSON Schema, and the frontend's TypeScript types from it
 ./dod songs [id …]     # download the songs from songs.txt that are not in cache/ yet
 ./dod backend-soak     # the soak test: 30 min of a simulated open day against the simulated board
+./dod notebook         # build the notebook's self-contained image (6.3) and run it here, simulated board
 ./dod shell            # a shell in the container
 ./dod hcl monitor      # HCL tools: monitor, pattern, bench, repl – see hcl.md section 9
-```
-
-Coming with their plans:
-
-```sh
-./dod esp upload       # put src/hcl/esp/ on the board, see section 8 (HCL stage 2)
-./dod esp run          # run src/hcl/esp/ from the PC without saving it on the board (HCL stage 2)
-./dod esp repl         # Python prompt on the board (HCL stage 2)
+./dod esp upload       # put src/hcl/esp/ (and protocol.py) on the board, reset it (section 8)
+./dod esp run <file>   # run a MicroPython script on the board, its output here
+./dod esp repl         # Python prompt on the board
 ```
 
 Docker runs outside Claude Code's sandbox: from a sandboxed shell `./dod`

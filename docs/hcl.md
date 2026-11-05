@@ -478,11 +478,26 @@ serial-bridge.ps1 -Port COM3 -TcpPort 7777
 
 - opens the COM port with `System.IO.Ports.SerialPort`, 115200, DTR and RTS off
 - listens on `127.0.0.1:7777` for one client at a time, copies bytes both
-  ways, unchanged
+  ways, unchanged; a **new client replaces the old one**, so a restarted
+  container never waits behind its own dead connection
 - when the client (the container) disconnects, the COM port **stays open** and
   the next client is accepted – a backend restart doesn't reset the board
 - when the board is unplugged, the client is disconnected and the script waits
-  for the port to come back
+  for the port to come back; clients that connect meanwhile are closed at once
+  (the link retries with its backoff)
+- it waits on both reads at once (`ReadAsync` + `Task.WaitAny`) instead of
+  polling: `Start-Sleep -Milliseconds 1` sleeps ~15 ms on Windows, which on
+  both directions would cost the 30 fps. `NoDelay` on the TCP side for the
+  same reason
+- .NET Framework's serial stream throws from its finalizer when a USB adapter
+  is unplugged, which kills the process; the script suppresses that
+  finalizer and closes the port itself
+- `-ParentPid` (`start.ps1` passes its own): the bridge stops when that
+  process is gone, so a console closed with X doesn't leave the COM port held
+- `-LogFile`: one line per event (port open/closed, client in/out with byte
+  counts); `start.ps1` writes it to `%TEMP%\dod2026\bridge.log`
+- Windows PowerShell 5.1 and .NET only; the file is ASCII (5.1 reads a file
+  without a BOM in the local code page)
 
 For the HCL this is just the URL `socket://host.docker.internal:7777` –
 pyserial handles it like a port, and none of the code above changes.
