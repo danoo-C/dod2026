@@ -486,7 +486,8 @@ Files: `screens/Main.tsx`, `components/AdminPanel.tsx`; backend:
   free in Edge's `--app` window); skip the
   current person, pause / resume the queue, stop the song, the terminal's
   width (kept in `localStorage`), the board's status in full. Visitors never
-  see it: it isn't in the page until opened.
+  see it: it isn't in the page until opened. Ctrl+Alt+K skips the current
+  person without the panel (someone left early).
 - **4001**: the overlay from step 2, with "Prevziať" to take over
 - backend: `DOD_WIFI_SSID` and `DOD_WIFI_PASSWORD` (both or neither,
   checked at startup like the other settings), `welcome.wifi` for the main
@@ -531,6 +532,9 @@ Built:
   `/api/status` every 2 s while open: link state, port, firmware, LEDs, both
   fps, round trip, frames sent, reconnects, last error, tasks and their
   restarts, connections.
+- Ctrl+Alt+K (`useKickShortcut`, also by `e.code`): the same skip, without
+  the panel. Ignored with nobody in control, while the key is held, and for
+  3 s after a skip, so a double press doesn't skip the next person too.
 - 4001: the `ConnectionGate` overlay from step 2, with "Prevziať".
 - backend: `DOD_WIFI_SSID` (1–32 characters) and `DOD_WIFI_PASSWORD` (8–63,
   WPA2's limits), both or neither – a model check whose message names both

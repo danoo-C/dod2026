@@ -5,7 +5,7 @@ import { createMemoryRouter, RouterProvider } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { StateMessage, Welcome } from "../src/api/messages";
-import { isAdminShortcut } from "../src/components/AdminPanel";
+import { isAdminShortcut, isKickShortcut, KICK_COOLDOWN_MS } from "../src/components/AdminPanel";
 import { routes } from "../src/routes";
 import { FakeWebSocket, install, stateAt, WELCOME, you, type FakeSession } from "./support/fakes";
 
@@ -233,6 +233,54 @@ describe("the admin panel", () => {
     expect(isAdminShortcut(key({ code: "KeyD", ctrlKey: true }))).toBe(false);
     expect(isAdminShortcut(key({ code: "KeyD", ctrlKey: true, altKey: true, shiftKey: true }))).toBe(false);
     expect(isAdminShortcut(key({ code: "KeyF", ctrlKey: true, altKey: true }))).toBe(false);
+  });
+});
+
+describe("Ctrl+Alt+K", () => {
+  const ctrlAltK = (init: KeyboardEventInit = {}) =>
+    fireEvent.keyDown(window, { code: "KeyK", key: "k", ctrlKey: true, altKey: true, ...init });
+  const SKIP = { type: "admin", action: "skip" };
+
+  it("skips the current person without opening the panel", async () => {
+    await start(MAIN, stateAt(NOW, { controller: "7f3a", waiting: 2 }));
+    ctrlAltK();
+    expect(sent()).toEqual([SKIP]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("held down or pressed twice quickly, it skips only one person", async () => {
+    await start(MAIN, stateAt(NOW, { controller: "7f3a", waiting: 2 }));
+    ctrlAltK();
+    ctrlAltK({ repeat: true });
+    act(() => FakeWebSocket.last.receive(stateAt(NOW, { controller: "b21c", waiting: 1 }))); // the next one plays
+    ctrlAltK();
+    expect(sent()).toEqual([SKIP]);
+    await act(() => vi.advanceTimersByTimeAsync(KICK_COOLDOWN_MS));
+    ctrlAltK();
+    expect(sent()).toEqual([SKIP, SKIP]);
+  });
+
+  it("nobody in control: nothing is sent", async () => {
+    await start(MAIN, stateAt(NOW, { controller: null }));
+    ctrlAltK();
+    expect(sent()).toEqual([]);
+  });
+
+  it("does nothing on the phone", async () => {
+    show("/");
+    await act(() => vi.advanceTimersByTimeAsync(0));
+    act(() => FakeWebSocket.last.accept());
+    ctrlAltK();
+    expect(sent().filter((m) => (m as { type?: string }).type === "admin")).toEqual([]);
+  });
+
+  it("is Ctrl+Alt+K only, by the key's position", () => {
+    const key = (init: KeyboardEventInit) => new KeyboardEvent("keydown", init);
+    expect(isKickShortcut(key({ code: "KeyK", ctrlKey: true, altKey: true }))).toBe(true);
+    expect(isKickShortcut(key({ code: "KeyK", key: "ł", ctrlKey: true, altKey: true }))).toBe(true); // Slovak AltGr
+    expect(isKickShortcut(key({ code: "KeyK", ctrlKey: true }))).toBe(false);
+    expect(isKickShortcut(key({ code: "KeyK", ctrlKey: true, altKey: true, shiftKey: true }))).toBe(false);
+    expect(isKickShortcut(key({ code: "KeyD", ctrlKey: true, altKey: true }))).toBe(false);
   });
 });
 

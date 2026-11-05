@@ -333,7 +333,8 @@ backend empties it, which is fine.
 - When no song is playing (manual mode, or idle), the right part shows big QR
   codes, the queue, and a large preview instead of the video.
 - Admin controls (skip the current person, pause the queue) open with a
-  keyboard shortcut, so visitors never see them.
+  keyboard shortcut, so visitors never see them. Another shortcut skips the
+  current person straight away, for someone who left before their time ran out.
 - **`/internal/*` is for the notebook only.** The launch script makes a random
   key on every start, passes it to the container (`DOD_INTERNAL_KEY`) and
   opens the internal pages with `?key=…`; the page keeps it in a cookie. A WebSocket

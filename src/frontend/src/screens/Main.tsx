@@ -13,7 +13,7 @@
 import { useCallback, useState, type CSSProperties, type ReactNode } from "react";
 
 import { useServerClock, useStand } from "../api/useStand";
-import { AdminPanel, TERM_MAX, TERM_MIN, useAdminShortcut } from "../components/AdminPanel";
+import { AdminPanel, TERM_MAX, TERM_MIN, useAdminShortcut, useKickShortcut } from "../components/AdminPanel";
 import { primeAudio } from "../apps/Music/audioGraph";
 import { Player } from "../apps/Music/Player";
 import { LiveBadge } from "../components/Badge";
@@ -83,6 +83,7 @@ export function Main() {
   const [admin, setAdmin] = useState(false);
   const close = useCallback(() => setAdmin(false), []);
   useAdminShortcut(() => setAdmin(true));
+  useKickShortcut();
   const music = useStand((s) => s.state?.mode === "music");
   return (
     <div className="nb" style={{ "--term-w": `${termWidth}%` } as CSSProperties}>

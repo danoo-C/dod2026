@@ -2,6 +2,7 @@
 // Ctrl+Alt+D opens it, Esc closes it. It isn't in the page until opened, so
 // visitors never see it. Skip the current person, pause the queue, stop the
 // song, the terminal's width, and the board's status in full.
+// Ctrl+Alt+K skips the current person without the panel (someone left early).
 import { useEffect, useRef, useState } from "react";
 
 import { useStand, useStandActions } from "../api/useStand";
@@ -10,10 +11,46 @@ import { LiveBadge } from "./Badge";
 export const STATUS_POLL_MS = 2000;
 export const TERM_MIN = 25;
 export const TERM_MAX = 33;
+export const KICK_COOLDOWN_MS = 3000; // a second Ctrl+Alt+K this soon is ignored: the next person keeps their turn
 
-/** Ctrl+Alt+D, wherever the focus is. By key position (e.code), so a Slovak keyboard's AltGr+D works too. */
+/** Ctrl+Alt+<key>, wherever the focus is. By key position (e.code), so a Slovak keyboard's AltGr works too. */
+function isCtrlAlt(e: KeyboardEvent, code: string): boolean {
+  return e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.code === code;
+}
+
+/** Ctrl+Alt+D: open the panel. */
 export function isAdminShortcut(e: KeyboardEvent): boolean {
-  return e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.code === "KeyD";
+  return isCtrlAlt(e, "KeyD");
+}
+
+/** Ctrl+Alt+K: skip the current person. */
+export function isKickShortcut(e: KeyboardEvent): boolean {
+  return isCtrlAlt(e, "KeyK");
+}
+
+/**
+ * Ctrl+Alt+K skips the current person, like the panel's first button. Held
+ * down or pressed twice quickly, it still skips only one person.
+ */
+export function useKickShortcut(): void {
+  const { send } = useStandActions();
+  const controller = useStand((s) => s.state?.queue.controller ?? null);
+  const ref = useRef({ send, controller, last: -Infinity });
+  ref.current.send = send;
+  ref.current.controller = controller;
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!isKickShortcut(e)) return;
+      e.preventDefault();
+      const r = ref.current;
+      const now = Date.now();
+      if (e.repeat || r.controller === null || now - r.last < KICK_COOLDOWN_MS) return;
+      r.last = now;
+      r.send({ type: "admin", action: "skip" });
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 }
 
 export function useAdminShortcut(open: () => void): void {
@@ -170,7 +207,9 @@ export function AdminPanel({
             </div>
           ))}
         </dl>
-        <p className="note">Zatvoríš klávesom Esc. Otvoríš znova Ctrl+Alt+D.</p>
+        <p className="note">
+          Zatvoríš klávesom Esc. Otvoríš znova Ctrl+Alt+D. Ctrl+Alt+K preskočí toho, kto ovláda, aj bez panela.
+        </p>
       </section>
     </div>
   );
