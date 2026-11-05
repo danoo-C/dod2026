@@ -607,12 +607,31 @@ Files: `src/backend/tests/test_end_to_end.py`, `src/backend/tests/soak.py`
 
 Done when:
 
-- [ ] the end-to-end test passes in `./dod test`
-- [ ] 30 minutes of soak: no errors in the log, memory stable (±10 MB), the
+- [x] the end-to-end test passes in `./dod test`
+- [x] 30 minutes of soak: no errors in the log, memory stable (±10 MB), the
   render loop at 30 fps (±1) throughout
-- [ ] the backend's test suite runs in under 30 s
-- [ ] [../backend.md](../backend.md) is updated wherever the build showed the
-  design had to change
+- [x] the backend's test suite runs in under 30 s
+- [x] [../backend.md](../backend.md) is updated wherever the build showed the
+  design had to change – nothing had to
+
+Built (2026-11-05):
+
+- `./dod test`: 794 backend tests in 22.8 s, the end-to-end test among them
+  (a main screen, two phones and a logging page through a round of the day).
+- `./dod backend-soak --minutes 30`: **PASS**. 30.0 min, the board unplugged
+  19 times; 128 phone sessions, 356 joins, 53 songs picked and 47 played,
+  the main screen closed 10 times and replaced 2 times, 82 floods (all
+  rate-limited), 16 695 log lines. No errors in the log, no task restarted,
+  the render loop at 30.0–30.5 fps every second. Memory 54.3 MB after the
+  warm-up, 58.3 MB at the end (max drift 4.0 MB): it rose in steps
+  (+2.1 MB by minute 9, +1.2 MB around minute 15–18, +0.7 MB at 26–28) with
+  flat stretches between, so it looks like settling rather than a leak –
+  the 2-hour soak at the rehearsal (tech-spec phase 6) will tell.
+- The soak runs the real app on uvicorn inside the container with nothing
+  published, so it can run next to `./dod sim`; the visitors are in their
+  own process. Turns are shortened (40 s, inactive after 12 s, idle after
+  20 s) so the queue's rules happen many times. Heavy work on the machine
+  meanwhile can fail the fps check without a real problem.
 
 ---
 
