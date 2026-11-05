@@ -17,4 +17,7 @@ include = ["hcl*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+# esp/ and esp_tests/ are MicroPython for the board (they import machine);
+# ./dod test passes src/hcl, which bypasses testpaths, so skip them here
+norecursedirs = [".*", "*.egg", "*.egg-info", "build", "dist", "venv", "esp", "esp_tests"]
 timeout = 10
