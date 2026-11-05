@@ -3,7 +3,20 @@
 import { describe, expect, it } from "vitest";
 
 import { BeatDetector, GAP } from "../src/apps/Music/beat";
-import { AutoGain, BANDS, bandEdges, HIGH_HZ, LOW_HZ, toBands } from "../src/apps/Music/spectrum";
+import {
+  AutoGain,
+  BANDS,
+  bandCentres,
+  bandEdges,
+  HIGH_HZ,
+  LightLevels,
+  LOW_HZ,
+  MAX_DB,
+  MIN_DB,
+  TILT_DB_PER_OCTAVE,
+  toBands,
+  WINDOW_DB,
+} from "../src/apps/Music/spectrum";
 
 const RATE = 48000;
 const FFT = 2048;
@@ -82,6 +95,62 @@ describe("AutoGain", () => {
   });
 });
 
+describe("LightLevels", () => {
+  // a band at `db` dBFS, as toBands gives it (0-1 over MIN_DB..MAX_DB)
+  const at = (db: number) => (db - MIN_DB) / (MAX_DB - MIN_DB);
+  // music's usual slope: each octave up ~4.5 dB quieter than the one below
+  const pink = (loudest: number) => bandCentres().map((hz) => at(loudest - TILT_DB_PER_OCTAVE * Math.log2(hz / LOW_HZ)));
+  const settle = (l: LightLevels, bands: number[], frames = 60) => {
+    let out: number[] = [];
+    for (let i = 0; i < frames; i++) out = l.apply(bands);
+    return out;
+  };
+
+  it("music's slope comes out even: the treble as bright as the bass", () => {
+    const out = settle(new LightLevels(), pink(-20));
+    const spread = Math.max(...out) - Math.min(...out);
+    expect(spread).toBeLessThan(0.05);
+    expect(Math.min(...out)).toBeGreaterThan(0.9);
+  });
+
+  it("silence is dark, whatever the tilt adds up high", () => {
+    const out = settle(new LightLevels(), Array<number>(BANDS).fill(0));
+    expect(out.every((v) => v === 0)).toBe(true);
+  });
+
+  it("a passage 20 dB quieter goes most of the way dark, not just a third", () => {
+    const l = new LightLevels();
+    settle(l, pink(-20));
+    const quiet = settle(l, pink(-40), 3); // right after: the peak hasn't fallen yet
+    expect(Math.max(...quiet)).toBeLessThan(0.25);
+    expect(Math.max(...quiet)).toBeGreaterThan(0);
+  });
+
+  it(`${WINDOW_DB} dB below the peak and further is dark`, () => {
+    const l = new LightLevels();
+    settle(l, pink(-20));
+    expect(Math.max(...settle(l, pink(-20 - WINDOW_DB - 1), 3))).toBe(0);
+  });
+
+  it("a quieter song still moves the lights: the peak follows it down", () => {
+    const l = new LightLevels();
+    settle(l, pink(-20));
+    const later = settle(l, pink(-28), 30 * 10); // 10 s of a song 8 dB quieter
+    expect(Math.min(...later)).toBeGreaterThan(0.9);
+  });
+
+  it("near-silence isn't blown up into light", () => {
+    const out = settle(new LightLevels(), pink(-80), 30 * 30);
+    expect(Math.max(...out)).toBe(0);
+  });
+
+  it("always 0-1, one value per band", () => {
+    const out = new LightLevels().apply(Array<number>(BANDS).fill(1));
+    expect(out).toHaveLength(BANDS);
+    expect(out.every((v) => v >= 0 && v <= 1)).toBe(true);
+  });
+});
+
 describe("BeatDetector", () => {
   const frames = (seconds: number) => Array.from({ length: Math.round(seconds * 30) }, (_, i) => i / 30);
   const bands = (low: number) => [low, low, low, low, ...Array<number>(28).fill(0.3)];
@@ -111,7 +180,7 @@ describe("BeatDetector", () => {
     expect(frames(5).filter((t) => d.push(bands(0.0), t))).toEqual([]);
   });
 
-  it("never more often than every 0.3 s, even with a kick every frame", () => {
+  it(`never more often than every ${GAP} s, even with a kick every frame`, () => {
     const d = new BeatDetector();
     const beats = frames(3).filter((t, i) => d.push(bands(i % 2 === 0 ? 1.0 : 0.05), t));
     for (let i = 1; i < beats.length; i++) expect((beats[i] ?? 0) - (beats[i - 1] ?? 0)).toBeGreaterThanOrEqual(GAP);

@@ -13,7 +13,7 @@ import { useEffect, useRef } from "react";
 import { useServerClock, useStand, useStandActions } from "../../api/useStand";
 import { connectAnalyser, type Analyser } from "./audioGraph";
 import { BeatDetector } from "./beat";
-import { AutoGain, bandEdges, toBands } from "./spectrum";
+import { AutoGain, bandEdges, LightLevels, toBands } from "./spectrum";
 
 export const POSITION_MS = 1000;
 export const SPECTRUM_MS = 1000 / 30;
@@ -88,7 +88,8 @@ export function Player({ visible }: { visible: boolean }) {
     if (analyser === null) return;
     const edges = bandEdges(analyser.sampleRate, analyser.fftSize);
     const bins = new Uint8Array(analyser.fftSize / 2);
-    const gain = new AutoGain();
+    const gain = new AutoGain(); // for the beat
+    const lights = new LightLevels(); // for the strip and the 8x8
     const beats = new BeatDetector();
     let last = -Infinity;
     let frame = 0;
@@ -97,8 +98,9 @@ export function Player({ visible }: { visible: boolean }) {
       if (document.hidden || v === null || v.paused || now - last < SPECTRUM_MS - 2) return;
       last = now;
       analyser.read(bins);
-      const bands = gain.apply(toBands(bins, edges));
-      sendRef.current({ type: "spectrum", bands, beat: beats.push(bands, now / 1000) });
+      const raw = toBands(bins, edges);
+      const beat = beats.push(gain.apply(raw), now / 1000);
+      sendRef.current({ type: "spectrum", bands: lights.apply(raw), beat });
     };
     frame = requestAnimationFrame(step);
     return () => cancelAnimationFrame(frame);

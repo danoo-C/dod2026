@@ -7,6 +7,8 @@
 // in the page for good and this runs once for it. In a module of its own so
 // the tests can replace it (jsdom has no Web Audio).
 
+import { MAX_DB, MIN_DB } from "./spectrum";
+
 export const FFT_SIZE = 2048;
 
 export interface Analyser {
@@ -49,7 +51,9 @@ export function connectAnalyser(video: HTMLMediaElement): Analyser | null {
     const source = context.createMediaElementSource(video);
     node = context.createAnalyser();
     node.fftSize = FFT_SIZE;
-    node.smoothingTimeConstant = 0.6;
+    node.minDecibels = MIN_DB; // the byte range spectrum.ts reads the bins with
+    node.maxDecibels = MAX_DB;
+    node.smoothingTimeConstant = 0.5; // lower: the lights follow quicker changes
     source.connect(node);
     node.connect(context.destination);
   } catch (e) {

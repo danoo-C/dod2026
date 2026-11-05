@@ -12,7 +12,7 @@ export const LOW_BANDS = 4;
 export const WINDOW = 1.0; // seconds of history
 export const RATIO = 1.4;
 export const MIN_ENERGY = 0.15;
-export const GAP = 0.3; // seconds: at most ~3 beats a second (200 BPM)
+export const GAP = 0.34; // seconds: at most ~2.9 beats a second (176 BPM): each beat is a burst on the strip, and the flash limit allows 3 a second
 
 export class BeatDetector {
   private history: { t: number; energy: number }[] = [];
