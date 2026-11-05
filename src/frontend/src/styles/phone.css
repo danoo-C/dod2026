@@ -1,7 +1,8 @@
 /* `/` on a visitor's phone (plan step 5), as in docs/preview.html. From 360 px
    wide; on a larger screen it stays phone-sized in the middle. */
 
-.phone {
+/* not `.phone`: that is the preview's size class (.pv.phone), which would get all of this too */
+.ph {
   min-height: 100dvh;
   max-width: 480px;
   margin: 0 auto;

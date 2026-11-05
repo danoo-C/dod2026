@@ -26,7 +26,7 @@ export function Phone() {
   const you = useStand((s) => s.you);
   const { screen, loaded } = usePhoneScreen(you);
   return (
-    <div className="phone">
+    <div className="ph">
       <header className="ph-top">
         <span className="logo">
           DOD<em>·</em>26
