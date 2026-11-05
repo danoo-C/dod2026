@@ -465,6 +465,39 @@ Which icon for which preset is in tech-spec 5.3 (decided in plan step 7);
 the icons are in `engine/matrix.py`, the animations in each effect. Like the
 strip, every 8x8 animation stays under the flash limit on its own.
 
+### 7.5 The music light show (strip)
+
+`effects/music.py`. The kick drives it. Every kick:
+
+- **pulses** the strip: instant attack, ~0.15 s decay, stronger with more
+  bass in the kick, whiter at the peak
+- **moves the colour on** by 0.7 × the song's bass: a bassy song jumps to
+  a new colour on nearly every kick, a light one only shifts it; between
+  kicks the colour drifts, faster with more bass
+
+Between kicks: a dim background in the palette's opposite colour, growing
+from 0 with loudness (silence is dark). On top: white sparkles from the
+treble, one LED at a time. Every 16 beats the pulse changes shape (whole
+strip / from the centre / alternating halves / comets from alternate ends)
+together with the palette (5 palettes for 4 shapes, so the pairs keep
+changing).
+
+**Flash limit.** One pulse is one flash; 3 a second are allowed. Above
+~136 BPM the pulses go half-time, and one sparkle at a time keeps the
+strip's average from adding flashes between kicks; simulated whole songs
+at 90–200 BPM never need the limit (`tests/test_music_audio.py`). The limit
+itself is unchanged.
+
+Effects are pure, so what the show needs from the past is kept by
+`music/audio.py` on the delayed timeline and handed over in `Audio`: the
+ages of the last 4 beats, the beat count, `travel` (loudness over time),
+`bass` (smoothed over ~1.5 s), `bass_travel` (bass over time) and
+`kick_sum` (the bass at each beat, summed). The main screen shapes the bands
+for the lights before sending them (`spectrum.ts`, `LightLevels`): +4.5 dB
+per octave above 1 kHz so the treble shows as much as the bass, and only the
+top 30 dB below the recent peak lit, so quiet parts go dark. The beat is
+detected on the untilted bands; at most one every 0.34 s.
+
 ## 8. The queue
 
 `control/queue.py` is pure logic: no I/O, no asyncio, the clock is passed in.

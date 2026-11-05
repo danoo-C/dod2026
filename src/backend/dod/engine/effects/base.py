@@ -24,6 +24,13 @@ class Audio:
 
     bands: tuple[float, ...]  # 32 bands, low to high, 0-1
     beat: bool = False
+    # kept by dod.music.audio, so the music effect can stay pure:
+    beats: tuple[float, ...] = ()  # seconds since each of the last few beats, newest first
+    count: int = 0  # beats so far; the light show changes scene every 16
+    travel: float = 0.0  # loudness summed over time: grows faster when the music is louder
+    bass: float = 0.0  # how much bass the song has lately, 0-1 (smoothed over ~1.5 s)
+    bass_travel: float = 0.0  # bass summed over time: the colours drift faster with more bass
+    kick_sum: float = 0.0  # the bass at each beat, summed: the colours jump further on bassy kicks
 
 
 @dataclass(frozen=True)
