@@ -15,6 +15,8 @@
        and the bridge
 
     Logs of the last run: %TEMP%\dod2026\ (bridge.log, backend.log).
+    Everything else (tests, the dev server, songs, the board's tools) is
+    dod.bat, the same commands as ./dod in WSL.
     Keep this file ASCII: Windows PowerShell reads a file without a BOM as
     the local code page.
 
@@ -49,63 +51,20 @@ Set-StrictMode -Version 2
 # errors, and docker writes progress there. Failures are checked by hand.
 $ErrorActionPreference = "Continue"
 
-$Root = Split-Path -Parent $PSScriptRoot
+. "$PSScriptRoot\common.ps1"  # $Root, $TcpPort, $Work, Say/Warn/Fail, Docker, the board, the bridge
+
 $Image = "dod2026-notebook"
 $Container = "dod2026"
 $HttpPort = 8000
-$TcpPort = 7777
-$BoardIds = @(
-    "VID_10C4&PID_EA60",  # CP2102 (the board)
-    "VID_1A86&PID_7523",  # CH340, in case of a replacement board
-    "VID_1A86&PID_55D4"   # CH9102
-)
-$Work = Join-Path $env:TEMP "dod2026"
-$BridgeScript = Join-Path $Root "src\hcl\bridge\serial-bridge.ps1"
 $BridgeLog = Join-Path $Work "bridge.log"
 $BackendLog = Join-Path $Work "backend.log"
 $EdgeProfile = Join-Path $Work "edge"
 
-function Say([string]$msg) { Write-Host "dod: $msg" }
-function Warn([string]$msg) { Write-Host "dod: $msg" -ForegroundColor Yellow }
-function Fail([string]$msg) {
-    Write-Host "dod: $msg" -ForegroundColor Red
-    exit 1
-}
-
 # --- helpers ----------------------------------------------------------------
-
-function Docker-Ready {
-    & docker info *> $null
-    return ($LASTEXITCODE -eq 0)
-}
 
 function Container-Running {
     $state = & docker inspect -f "{{.State.Running}}" $Container 2> $null
     return ($LASTEXITCODE -eq 0 -and "$state".Trim() -eq "true")
-}
-
-function Find-Board {
-    $devices = Get-CimInstance -ClassName Win32_PnPEntity -Filter "Name LIKE '%(COM%'" -ErrorAction SilentlyContinue
-    foreach ($d in @($devices)) {
-        if (-not $d) { continue }
-        foreach ($id in $BoardIds) {
-            if ("$($d.PNPDeviceID)" -like "*$id*" -and "$($d.Name)" -match "\((COM\d+)\)") {
-                return $Matches[1]
-            }
-        }
-    }
-    return $null
-}
-
-function Stop-OldBridges {
-    $old = Get-CimInstance -ClassName Win32_Process -Filter "Name = 'powershell.exe'" -ErrorAction SilentlyContinue |
-        Where-Object { "$($_.CommandLine)" -like "*serial-bridge.ps1*" -and $_.ProcessId -ne $PID }
-    foreach ($p in @($old)) {
-        if ($p) {
-            Say "stopping a bridge left over from the last run (pid $($p.ProcessId))"
-            Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue
-        }
-    }
 }
 
 function Stop-OldEdge {
@@ -115,23 +74,6 @@ function Stop-OldEdge {
         Where-Object { "$($_.CommandLine)" -like "*$EdgeProfile*" }
     foreach ($p in @($old)) {
         if ($p) { Stop-Process -Id $p.ProcessId -Force -ErrorAction SilentlyContinue }
-    }
-}
-
-function Start-Bridge([string]$com) {
-    $argList = @(
-        "-NoProfile", "-ExecutionPolicy", "Bypass",
-        "-File", "`"$BridgeScript`"",
-        "-Port", $com, "-TcpPort", $TcpPort,
-        "-LogFile", "`"$BridgeLog`"",
-        "-ParentPid", $PID
-    )
-    return Start-Process -FilePath "powershell.exe" -ArgumentList $argList -WindowStyle Hidden -PassThru
-}
-
-function Show-LogTail([string]$path, [int]$lines = 15) {
-    if (Test-Path -LiteralPath $path) {
-        Get-Content -LiteralPath $path -Tail $lines | ForEach-Object { Write-Host "    $_" }
     }
 }
 
@@ -195,20 +137,7 @@ Set-Location -LiteralPath $Root
 
 try {
     # 1. Docker
-    if (-not (Get-Command docker -ErrorAction SilentlyContinue)) {
-        Fail "Docker Desktop isn't installed (tech-spec 6.1)"
-    }
-    if (-not (Docker-Ready)) {
-        $desktop = Join-Path $env:ProgramFiles "Docker\Docker\Docker Desktop.exe"
-        if (-not (Test-Path -LiteralPath $desktop)) { Fail "Docker isn't running and Docker Desktop wasn't found at $desktop" }
-        Say "starting Docker Desktop (this can take a minute)..."
-        Start-Process -FilePath $desktop | Out-Null
-        $deadline = (Get-Date).AddMinutes(3)
-        while (-not (Docker-Ready)) {
-            if ((Get-Date) -gt $deadline) { Fail "Docker Desktop didn't start within 3 minutes" }
-            Start-Sleep -Seconds 2
-        }
-    }
+    Ensure-Docker
     Say "Docker is running"
 
     # leftovers from a run that didn't stop cleanly (the window closed with X)
@@ -232,15 +161,8 @@ try {
             }
         }
         Say "board on $com"
-        Remove-Item -LiteralPath $BridgeLog -ErrorAction SilentlyContinue
-        $bridge = Start-Bridge $com
-        Start-Sleep -Milliseconds 1500
-        if ($bridge.HasExited) {
-            Show-LogTail $BridgeLog
-            Fail "the serial bridge stopped right away (log: $BridgeLog)"
-        }
-        $serialUrl = "socket://host.docker.internal:$TcpPort"
-        Say "bridge running: $com <-> 127.0.0.1:$TcpPort"
+        $bridge = Open-Bridge $com $BridgeLog
+        $serialUrl = $BridgeUrl
     }
 
     # 4. the image
@@ -278,7 +200,7 @@ try {
     $cache = Join-Path $Root "cache"
     New-Item -ItemType Directory -Force -Path $cache | Out-Null
     $songs = @(Get-ChildItem -LiteralPath $cache -Filter "*.mp4" -ErrorAction SilentlyContinue).Count
-    if ($songs -eq 0) { Warn "cache\ has no songs: the music mode will be empty (./dod songs in WSL, then copy cache\ over)" }
+    if ($songs -eq 0) { Warn "cache\ has no songs: the music mode will be empty (dod.bat songs, or ./dod songs in WSL and copy cache\ over)" }
 
     $env:DOD_SERIAL = $serialUrl
     $env:DOD_PUBLIC_URL = $publicUrl
@@ -345,7 +267,7 @@ try {
         if ($bridge -and $bridge.HasExited) {
             Warn "the serial bridge stopped; starting it again"
             Show-LogTail $BridgeLog 5
-            $bridge = Start-Bridge $com
+            $bridge = Start-Bridge $com $BridgeLog
         }
     }
 } finally {
@@ -354,9 +276,7 @@ try {
         & docker logs $Container *> $BackendLog
         & docker rm -f $Container *> $null
     }
-    if ($bridge -and -not $bridge.HasExited) {
-        Stop-Process -Id $bridge.Id -Force -ErrorAction SilentlyContinue
-    }
+    Close-Bridge $bridge
     if ($browser -and -not $browser.HasExited) {
         Stop-Process -Id $browser.Id -Force -ErrorAction SilentlyContinue
     }

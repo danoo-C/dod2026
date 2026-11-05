@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Dev wrapper for DOD 2026. Every tool runs in Docker, nothing is installed in WSL.
+# On Windows, dod.bat (windows/dod.ps1) has the same commands.
 #
 #   ./dod --help     every command, one line each
 #   ./dod --manual   how to use each command, and full commands that launch the app
@@ -79,6 +80,8 @@ Other
   shell                                   a bash shell in the container
   -h, --help                              this list
   --manual                                how to use each command, and full commands to launch the app
+
+On Windows: dod.bat, the same commands (dod --help there).
 
 Settings: any DOD_* variable reaches the backend, e.g.  DOD_BRIGHTNESS=0.3 ./dod sim
 DOD_SERIAL picks the board: sim (default), /dev/ttyUSB0, socket://host:port.
@@ -199,6 +202,14 @@ internet); after that everything starts in seconds.
 
   (start.bat and the bridge are written but not tested on Windows yet:
   docs/plans/hcl.md, stage 3.)
+
+  Every other command works on Windows too: dod.bat has the same commands
+  as ./dod (dod --help, dod --manual), in Docker Desktop, the board through
+  the serial bridge. E.g. in a Command Prompt in the project folder:
+
+    dod songs
+    dod test
+    dod sim
 
 1.6  Real phones during development
 
@@ -612,6 +623,12 @@ case "$1" in
         docker build -t dod2026-notebook "$DIR"
         nb=(--rm --init -i --name dod2026-notebook -p "$PORT_HTTP:$PORT_HTTP" -v "$DIR/cache:/work/cache"
             -e DOD_SERIAL="${DOD_SERIAL:-sim}" -e DOD_INTERNAL_KEY="${DOD_INTERNAL_KEY:-dev}")
+        # every other DOD_ setting too, e.g. DOD_AUDIO_DELAY_MS=200 ./dod notebook
+        for var in $(compgen -e); do
+            if [[ "$var" == DOD_* && "$var" != DOD_SERIAL && "$var" != DOD_INTERNAL_KEY ]]; then
+                nb+=(-e "$var")
+            fi
+        done
         if [[ -t 0 ]]; then
             nb+=(-t)
         fi

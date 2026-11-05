@@ -108,6 +108,19 @@ cd ~/spseke/dod2026
   playhead. All 10 songs have theirs. numpy is a new backend dependency:
   **`./dod build` and rebuild the notebook image**. After changing the show,
   run `./dod songs` again (old pictures aren't served).
+- **`dod.bat` on Windows** (`windows/dod.ps1`): the same commands as
+  `./dod`, in Docker Desktop. The board goes through the serial bridge
+  (Docker Desktop can't pass a COM port in): `DOD_SERIAL=COM5` / `board`,
+  `ESP_PORT=COM5`; the esp commands use mpremote over `socket://`. The
+  backend and Vite poll for file changes there. Shared helpers moved to
+  `windows/common.ps1` (start.ps1 uses them too). Checked with Windows
+  PowerShell 5.1 on this PC: all scripts parse; `--help`, `--manual`,
+  argument passing (quotes, `-k`, `-x`), exit codes. **Not run with Docker
+  Desktop yet** – do `dod test`, `dod sim`, `dod songs`, and with the board
+  `dod hcl bench`, `dod esp upload` on the notebook. `tests/test_launchers.py`
+  fails when `./dod` and `dod.ps1` get different commands.
+- `./dod notebook` now passes every `DOD_*` setting (the manual's
+  `DOD_AUDIO_DELAY_MS=200 ./dod notebook` did nothing before).
 - `test_ws.py`'s flood and log-order tests fail on battery (the CPU is
   throttled ~3×; they fail with the code before today too) – run the suites
   on mains power.

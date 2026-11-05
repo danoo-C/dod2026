@@ -7,6 +7,9 @@ import { defineConfig } from "vite";
 
 // ./dod sim passes the backend's container name; outside Docker it is local
 const backend = process.env.DOD_BACKEND ?? "http://localhost:8000";
+// dod.bat on Windows: Docker Desktop doesn't pass a Windows folder's file
+// changes into the container, so Vite looks for them itself
+const poll = process.env.DOD_POLL === "1";
 
 export default defineConfig({
   plugins: [react()],
@@ -14,6 +17,7 @@ export default defineConfig({
     host: true,
     port: 5173,
     strictPort: true,
+    watch: poll ? { usePolling: true, interval: 300 } : undefined,
     proxy: {
       "/api": backend,
       "/media": backend,

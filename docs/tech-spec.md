@@ -122,8 +122,10 @@ dod2026/
     preview.html         clickable mockup of the frontend
   Dockerfile             the one image, used for running and for development
   dod                    dev wrapper for WSL (bash), like ~/spseke/esp/setup/esp
+  dod.bat                the same dev wrapper on Windows (windows/dod.ps1), the same commands
   start.bat              Windows launcher: double-click this on the notebook
   windows/start.ps1      what start.bat actually runs
+  windows/common.ps1     what both share: Docker Desktop, finding the board, the bridge
   src/
     frontend/            React frontend (Vite); its build is served by the backend
       package.json
@@ -496,6 +498,12 @@ container.
 Options: `start.bat -Simulated` (no board, no bridge), `-Port COM5` (if
 finding the board fails), `-Rebuild` (after the code changed),
 `-WifiSsid NAME -WifiPassword PASS` (if reading the hotspot fails).
+
+Everything else `./dod` does works on the notebook too: `dod.bat <command>`
+(`windows/dod.ps1`) has the same commands, in Docker Desktop, with the board
+through the same bridge while a command needs it (`dod songs`, `dod test`,
+`dod hcl bench`, `dod esp upload`, ...). `tests/test_launchers.py` keeps the
+two command lists equal.
 
 The image is built and tested on the notebook **before** the day. Building
 needs internet (pip, apt, npm); a `docker save` of the working image on a USB
