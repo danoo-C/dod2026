@@ -520,6 +520,30 @@ for the lights before sending them (`spectrum.ts`, `LightLevels`): +4.5 dB
 per octave above 1 kHz so the treble shows as much as the bass, and only the
 top 30 dB below the recent peak lit, so quiet parts go dark.
 
+### 7.6 Each song's light show, worked out ahead
+
+`music/timeline.py`. `./dod songs` makes `<id>.show.png` for every
+downloaded song: the strip over the whole song, one column per frame (30 a
+second), 4 px per LED with 1 px between (49 px high, so its rows stay sharp
+at that height). The main screen shows it under the video, stretched over
+the width, with a playhead at the video's position and the part already
+played dimmed (`Player.tsx`, `ShowTimeline`); a song without one shows none.
+
+It is made the way the live show is: the song's sound from ffmpeg, the
+spectrum as the browser makes it (Web Audio's analyser: Blackman window,
+2048-point FFT, smoothing 0.5, the byte range; then `spectrum.ts` and
+`beat.ts`, copied – `tests/test_timeline.py` checks the constants against
+the frontend's files), then the backend's own `AudioInput`, music effect and
+output stage at full brightness. The live show differs only by the
+network's timing. numpy does the FFT; the engine itself still doesn't use it.
+
+`<id>.show.json` (written last) holds `VERSION`, a hash of the code that
+makes the show (music.py, base.py, output.py, color.py, audio.py,
+timeline.py; `\r\n` counted as `\n`, so a Windows checkout hashes the
+same). A picture from another version is stale: `/media/<id>.show.png`
+answers 404 for it, the backend logs at start how many songs lack a current
+one, and the next `./dod songs` makes them again (no internet needed).
+
 ## 8. The queue
 
 `control/queue.py` is pure logic: no I/O, no asyncio, the clock is passed in.
@@ -683,6 +707,7 @@ dropped. The main screen's `spectrum` is exempt (30 / s).
 | `GET /api/health` | `{"status": "ok"}` |
 | `GET /api/songs` | the song list and which songs are downloaded |
 | `GET /media/<id>.mp4` | a downloaded song, with range requests (seeking). `<id>` must match `^[A-Za-z0-9_-]{11}$` **and** be on the song list, otherwise 404 – it is never used to build a path before that check |
+| `GET /media/<id>.show.png` | its light show over the whole song (7.6), the same checks; 404 also when it has none or a stale one |
 
 **Types in the frontend.** The frontend gets its TypeScript types from the
 same Pydantic models: `./dod schema` writes their JSON Schema to

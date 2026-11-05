@@ -166,4 +166,31 @@ describe("the spectrum", () => {
     expect(of("spectrum")).toHaveLength(0);
     expect(of("player").length).toBeGreaterThan(0);
   });
+
+  it("shows the song's light show under the video once its picture loads, with a playhead", async () => {
+    await show();
+    state(playing(SONG));
+    const box = document.querySelector("[data-testid=show]") as HTMLElement;
+    const img = box.querySelector("img") as HTMLImageElement;
+    expect(img.getAttribute("src")).toBe(`/media/${SONG}.show.png`);
+    expect(box.hidden).toBe(true); // not loaded yet
+    act(() => img.dispatchEvent(new Event("load")));
+    expect(box.hidden).toBe(false);
+    expect(document.querySelector("[data-testid=video]")?.classList.contains("has-show")).toBe(true);
+    Object.defineProperty(video(), "duration", { configurable: true, get: () => 200 });
+    Object.defineProperty(video(), "currentTime", { configurable: true, get: () => 50, set: () => {} });
+    await act(() => vi.advanceTimersByTimeAsync(50));
+    expect(box.style.getPropertyValue("--at")).toBe("0.25");
+  });
+
+  it("shows no light show for a song without a picture", async () => {
+    await show();
+    state(playing(SONG));
+    const box = document.querySelector("[data-testid=show]") as HTMLElement;
+    act(() => box.querySelector("img")?.dispatchEvent(new Event("error")));
+    expect(box.hidden).toBe(true);
+    expect(document.querySelector("[data-testid=video]")?.classList.contains("has-show")).toBe(false);
+    state(playing(null));
+    expect(document.querySelector("[data-testid=show]")).toBeNull();
+  });
 });

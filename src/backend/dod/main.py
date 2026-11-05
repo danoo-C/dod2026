@@ -61,6 +61,7 @@ def create_app(settings: Settings | None = None, *, link: Any = None,
         settings = settings_or_exit()
     setup_logging(settings.log_level)
     library = library_or_exit(songs_file or SONGS_FILE, settings.cache_dir)
+    log_light_shows(library)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
@@ -176,6 +177,20 @@ def library_or_exit(path: Path, cache_dir: Path) -> Library:
     except SongListError as e:
         print(f"dod: {path.name}: {e}", file=sys.stderr, flush=True)
         raise SystemExit(1) from None
+
+
+def log_light_shows(library: Library) -> None:
+    """How many downloaded songs have a current light show under their video
+    (timeline.py); the others show none until `./dod songs` makes them."""
+    from dod.music import timeline
+
+    ready = [s.id for s in library.songs if library.ready(s.id)]
+    stale = [i for i in ready if not timeline.current(library.cache_dir, i)]
+    if stale:
+        log.warning("light shows: %d of %d songs have none or an old one (%s); ./dod songs makes them",
+                    len(stale), len(ready), ", ".join(stale))
+    else:
+        log.info("light shows: all %d downloaded songs have one", len(ready))
 
 
 def settings_or_exit() -> Settings:

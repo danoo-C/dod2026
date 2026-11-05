@@ -16,6 +16,8 @@ dependencies = [
     # the songs (plan step 8): yt-dlp with its usual extras, and deno, which it
     # needs for YouTube now; pin-deno pins deno to the version this yt-dlp wants
     "yt-dlp[default,pin-deno]==2026.10.21",
+    # each song's light show worked out ahead (dod/music/timeline.py): the FFT
+    "numpy==2.5.4",
 ]
 
 [project.optional-dependencies]

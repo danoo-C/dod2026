@@ -6,6 +6,7 @@
     GET /api/status                            the HCL's, the render loop's and the tasks' view
     GET /api/songs                             the song list, and which songs are downloaded
     GET /media/<id>.mp4                        a downloaded song, with range requests
+    GET /media/<id>.show.png                   its light show over the whole song (timeline.py)
     GET /api/health
 
 The frontend is served from its build, `src/frontend/dist` in the mounted
@@ -21,6 +22,7 @@ the internal cookie, HttpOnly, so page scripts never hold the key.
 
 from __future__ import annotations
 
+import asyncio
 import re
 from pathlib import Path
 from typing import Any
@@ -127,20 +129,28 @@ async def songs(request: Request) -> list[dict[str, Any]]:
     return [s.model_dump() for s in request.app.state.songs()]
 
 
-MEDIA = re.compile(r"([A-Za-z0-9_-]{11})\.mp4")
+MEDIA = re.compile(r"([A-Za-z0-9_-]{11})\.(mp4|show\.png)")
 
 
 @router.get("/media/{name}")
 async def media(request: Request, name: str) -> Response:
-    """A downloaded song for the main screen's <video> (backend.md 9). The id is
-    checked against the pattern and the song list before it is used for a
-    path; anything else is 404. FileResponse answers Range with 206, so the
-    video can seek."""
+    """A downloaded song for the main screen's <video>, or its light show's
+    picture (backend.md 9, 7.6). The id is checked against the pattern and the
+    song list before it is used for a path; anything else is 404. FileResponse
+    answers Range with 206, so the video can seek."""
     match = MEDIA.fullmatch(name)
-    video = request.app.state.library.video(match[1]) if match else None
-    if video is None:
+    if match is None:
         return JSONResponse({"detail": "no such song"}, status_code=404)
-    return FileResponse(video, media_type="video/mp4")
+    library = request.app.state.library
+    if match[2] == "mp4":
+        video = library.video(match[1])
+        if video is None:
+            return JSONResponse({"detail": "no such song"}, status_code=404)
+        return FileResponse(video, media_type="video/mp4")
+    picture = await asyncio.to_thread(library.show, match[1])
+    if picture is None:
+        return JSONResponse({"detail": "no light show for this song"}, status_code=404)
+    return FileResponse(picture, media_type="image/png")
 
 
 @router.get("/api/health")

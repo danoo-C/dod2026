@@ -102,6 +102,15 @@ cd ~/spseke/dod2026
   spectra computed the way the browser does): no frame held by the flash
   limit. **To do: watch it on the real strip** (`./dod dev`, play Sandstorm
   and L'Amour Toujours – both have a breakdown, a build and a drop).
+- **Each song's light show under the video** (backend.md 7.6): `./dod songs`
+  works out `<id>.show.png` (the strip over the whole song) for every
+  downloaded song, new or with a stale one; the main screen shows it with a
+  playhead. All 10 songs have theirs. numpy is a new backend dependency:
+  **`./dod build` and rebuild the notebook image**. After changing the show,
+  run `./dod songs` again (old pictures aren't served).
+- `test_ws.py`'s flood and log-order tests fail on battery (the CPU is
+  throttled ~3×; they fail with the code before today too) – run the suites
+  on mains power.
 - **HCL stage 2 committed** (the board's code, `./dod esp`, the late-HELLO
   fix in the link). Pytest no longer walks into `esp/` and `esp_tests/`
   (MicroPython, they import `machine`).

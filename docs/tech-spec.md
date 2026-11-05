@@ -210,6 +210,7 @@ After the mode renders, two filters always run:
   answers every page route with the React app's `index.html`, React Router
   picks the screen)
 - `GET /media/<id>.mp4` – a downloaded song
+- `GET /media/<id>.show.png` – its light show over the whole song, shown under the video (backend.md 7.6)
 - `GET /api/songs` – the song list, and which songs are downloaded
 - `WS /ws?role=phone|main|logging` – everything live. `main` and `logging`
   need the internal key (5.1).

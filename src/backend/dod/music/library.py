@@ -4,6 +4,7 @@
     library = Library.from_file(SONGS_FILE, settings.cache_dir)
     library.infos()          the list for `welcome` and /api/songs
     library.video("dQw4…")   the file, only for a listed and downloaded id
+    library.show("dQw4…")    its light show's picture (timeline.py), if it is current
 
 A download is two files in the cache: `<id>.mp4` and `<id>.json` (title and
 length, written by download.py after the video). A song counts as downloaded
@@ -140,6 +141,16 @@ class Library:
         """The .mp4 of a listed, downloaded song; None for anything else."""
         song = self.song(song_id)
         return self._files(song)[0] if song is not None and self.ready(song_id) else None
+
+    def show(self, song_id: str) -> Path | None:
+        """The light show's picture of a listed, downloaded song (timeline.py), if it
+        was made by this version of the show; None for anything else."""
+        from dod.music import timeline  # here: numpy only when a picture is asked for
+
+        song = self.song(song_id)
+        if song is None or not self.ready(song_id) or not timeline.current(self.cache_dir, song.id):
+            return None
+        return timeline.files(self.cache_dir, song.id)[0]
 
     def missing(self) -> list[Song]:
         return [s for s in self.songs if not self.ready(s.id)]

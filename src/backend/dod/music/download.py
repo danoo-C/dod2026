@@ -11,6 +11,11 @@ temporary folder first; `<id>.mp4` is moved into the cache, then `<id>.json`
 song as downloaded only when both are there, so an interrupted run never
 leaves a half song behind. One song failing doesn't stop the others.
 
+Then every downloaded song gets its light show's picture (timeline.py), if it
+has none or one from an older version of the show – that part needs no
+internet, so `./dod songs` also brings the pictures up to date after the show
+was changed.
+
 YouTube changes often and yt-dlp follows; when downloads start failing,
 update the pinned yt-dlp (src/backend/pyproject.toml) and rebuild the image,
 in the week before the event (tech-spec 5.2).
@@ -133,7 +138,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"songs: {len(songs)} on the list, cache: {settings.cache_dir}")
     failed = download(library, songs)
     print(f"{len(songs) - len(failed)} of {len(songs)} ready" + (f", failed: {', '.join(failed)}" if failed else ""))
-    return 1 if failed else 0
+    from dod.music import timeline  # here: numpy only for this
+
+    ready = [(s.id, video) for s in songs if (video := library.video(s.id)) is not None]
+    print(f"light shows: {sum(1 for i, _ in ready if timeline.current(library.cache_dir, i))} of {len(ready)} current")
+    no_show = timeline.refresh(library.cache_dir, ready)
+    if no_show:
+        print(f"light shows failed: {', '.join(no_show)}")
+    return 1 if failed or no_show else 0
 
 
 if __name__ == "__main__":

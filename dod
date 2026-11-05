@@ -64,7 +64,7 @@ Build
   npm <args>                              any npm command, in a Node container, in src/frontend
 
 Songs
-  songs [id ...]                          download the songs from songs.txt missing from cache/
+  songs [id ...]                          download the songs from songs.txt missing from cache/, make their light shows
 
 The board
   hcl monitor [--send] [--seconds N]      watch the link: a status line every second, every event
@@ -278,6 +278,10 @@ internet); after that everything starts in seconds.
 ./dod songs [id ...]
     Downloads the songs from src/backend/dod/music/songs.txt that are not in
     cache/ yet (~30 MB and ~15 s each, needs internet). With ids: only those.
+    Then works out the light show of every downloaded song that has none, or
+    one from an older version of the show (<id>.show.png, shown under the
+    video on the main screen; ~8 s each, no internet needed). After changing
+    the show (music.py, audio.py), run it again: old pictures aren't shown.
 
         ./dod songs
         ./dod songs dQw4w9WgXcQ

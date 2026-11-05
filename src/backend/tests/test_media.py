@@ -66,8 +66,25 @@ def test_range_requests_get_206(cache, clip):
     assert tail.status_code == 206 and tail.content == clip[-50:]
 
 
+def test_a_songs_light_show_is_served_when_current(cache, monkeypatch):
+    from dod.music import timeline
+    cache_dir, _ = cache
+    c = TestClient(app(cache)[0])
+    assert c.get(f"/media/{SONG}.show.png").status_code == 404  # not made yet
+    timeline.make(cache_dir / f"{SONG}.mp4", cache_dir, SONG)
+    r = c.get(f"/media/{SONG}.show.png")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    assert r.content.startswith(b"\x89PNG")
+    monkeypatch.setattr(timeline, "VERSION", "another-show")
+    assert c.get(f"/media/{SONG}.show.png").status_code == 404  # made by an older show: stale
+
+
 @pytest.mark.parametrize("path", [
     "/media/y6120QOlsfU.mp4",  # on the list, not downloaded
+    "/media/y6120QOlsfU.show.png",
+    "/media/9bZkp7q19f0.show.png",
+    f"/media/{SONG}.show.json",
+    f"/media/{SONG}.png",
     "/media/9bZkp7q19f0.mp4",  # not on the list
     f"/media/{SONG}.json",
     f"/media/{SONG}",

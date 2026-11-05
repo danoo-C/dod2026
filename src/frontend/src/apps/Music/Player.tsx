@@ -8,7 +8,9 @@
 //   10 s, this only makes it quicker
 // - the spectrum ~30 times a second while the video plays and the page is
 //   visible: 32 bands and a beat flag (spectrum.ts, beat.ts)
-import { useEffect, useRef } from "react";
+// - under the video, the song's light show over the whole song with a
+//   playhead (ShowTimeline), when the backend has its picture
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { useServerClock, useStand, useStandActions } from "../../api/useStand";
 import { connectAnalyser, type Analyser } from "./audioGraph";
@@ -30,6 +32,7 @@ export function Player({ visible }: { visible: boolean }) {
   const current = useRef<string | null>(null); // the song the video has
   const sendRef = useRef(send);
   sendRef.current = send;
+  const [shown, setShown] = useState<string | null>(null); // the song whose light show loaded
 
   // a new song: load it, from where it is now (a reload in the middle of a song)
   useEffect(() => {
@@ -107,12 +110,61 @@ export function Player({ visible }: { visible: boolean }) {
 
   // always in the page (the <video> must stay), hidden while no song plays
   return (
-    <div className="video" data-testid="video" hidden={!visible}>
+    <div className={shown !== null && shown === song ? "video has-show" : "video"} data-testid="video" hidden={!visible}>
       <video ref={video} playsInline preload="auto" />
+      {song !== null && <ShowTimeline key={song} song={song} video={video} onShown={setShown} />}
       <div className="video-meta">
         <span className="chip">VIDEO</span>
         <h2>{title}</h2>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The song's light show (backend: dod/music/timeline.py): /media/<id>.show.png
+ * is the strip over the whole song, one column per frame, one band per LED.
+ * Stretched over the width, with a playhead at the video's position and the
+ * part already played dimmed. Hidden until the picture loads; a song without
+ * one (404) shows none.
+ */
+export function ShowTimeline({ song, video, onShown }: {
+  song: string;
+  video: RefObject<HTMLVideoElement | null>;
+  onShown: (song: string | null) => void;
+}) {
+  const [loaded, setLoaded] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!loaded) return;
+    let frame = 0;
+    const step = () => {
+      frame = requestAnimationFrame(step);
+      const v = video.current;
+      if (v === null || box.current === null || !(v.duration > 0)) return;
+      box.current.style.setProperty("--at", String(Math.min(1, Math.max(0, v.currentTime / v.duration))));
+    };
+    frame = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(frame);
+  }, [loaded, video]);
+
+  return (
+    <div className="show" ref={box} data-testid="show" hidden={!loaded}>
+      <img
+        src={`/media/${song}.show.png`}
+        alt=""
+        onLoad={() => {
+          setLoaded(true);
+          onShown(song);
+        }}
+        onError={() => {
+          setLoaded(false);
+          onShown(null);
+        }}
+      />
+      <i className="show-past" />
+      <i className="show-head" />
     </div>
   );
 }

@@ -67,6 +67,51 @@
   font-size: 12px;
 }
 
+/* the song's light show under the video (Player.tsx, ShowTimeline): the
+   picture is 49 px high (10 LEDs of 4 px, 1 px between), so its rows stay sharp */
+.video {
+  --show-h: 50px;
+}
+.video.has-show video {
+  height: calc(100% - var(--show-h));
+}
+.video.has-show .video-meta {
+  bottom: var(--show-h);
+}
+.show {
+  --at: 0;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: var(--show-h);
+  border-top: 1px solid var(--line);
+  background: #0a0b16;
+}
+.show img {
+  display: block;
+  width: 100%;
+  height: 49px;
+}
+.show-past {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: calc(var(--at) * 100%);
+  background: rgb(6 7 13 / 0.6);
+}
+.show-head {
+  position: absolute;
+  top: -4px;
+  bottom: 0;
+  left: calc(var(--at) * 100%);
+  width: 2px;
+  margin-left: -1px;
+  background: #fff;
+  box-shadow: 0 0 8px rgb(255 255 255 / 0.8);
+}
+
 /* no song: inviting people */
 .idle {
   min-height: 0;
