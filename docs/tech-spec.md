@@ -534,6 +534,8 @@ tools run in the Docker image, behind one wrapper script, `./dod`.
 ./dod npm install      # any npm command, run in the node container in src/frontend/
 ./dod frontend-build   # build the frontend into src/frontend/dist/, which the backend serves on 8000
 ./dod schema           # the WebSocket messages' JSON Schema, and the frontend's TypeScript types from it
+./dod songs [id …]     # download the songs from songs.txt that are not in cache/ yet
+./dod backend-soak     # the soak test: 30 min of a simulated open day against the simulated board
 ./dod shell            # a shell in the container
 ./dod hcl monitor      # HCL tools: monitor, pattern, bench, repl – see hcl.md section 9
 ```
@@ -541,8 +543,6 @@ tools run in the Docker image, behind one wrapper script, `./dod`.
 Coming with their plans:
 
 ```sh
-./dod songs            # download the songs from songs.txt that are not in cache/ yet (backend plan, step 8)
-./dod backend-soak     # 30-minute soak test against the simulated board (backend plan, step 10)
 ./dod esp upload       # put src/hcl/esp/ on the board, see section 8 (HCL stage 2)
 ./dod esp run          # run src/hcl/esp/ from the PC without saving it on the board (HCL stage 2)
 ./dod esp repl         # Python prompt on the board (HCL stage 2)

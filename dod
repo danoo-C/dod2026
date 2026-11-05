@@ -10,6 +10,7 @@
 #   ./dod frontend-build                   build the frontend into src/frontend/dist (the backend serves it)
 #   ./dod schema                           write the WebSocket messages' JSON Schema and TypeScript types
 #   ./dod songs [id ...]                   download the songs from songs.txt missing from cache/
+#   ./dod backend-soak [--minutes 30]      the soak test: the whole backend under a simulated open day
 #   ./dod shell                            a shell in the container
 #   ./dod hcl <tool> [args]                HCL tools: monitor, pattern, bench, repl (docs/hcl.md section 9)
 #   ./dod esp upload                       put src/hcl/esp/ (and protocol.py) on the board, reset it
@@ -49,7 +50,7 @@ BACKEND_CMD=(sh -c 'python -c "from dod.main import settings_or_exit; settings_o
              --reload --reload-dir src/backend --reload-dir src/hcl --ws-max-size 65536)
 
 usage() {
-    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | shell | hcl <monitor|pattern|bench|repl> [args] | esp <upload|run|repl>" >&2
+    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | backend-soak [--minutes N] | shell | hcl <monitor|pattern|bench|repl> [args] | esp <upload|run|repl>" >&2
     exit 1
 }
 
@@ -280,6 +281,13 @@ case "$1" in
         node_args
         ensure_node_modules
         exec docker run "${nargs[@]}" "$NODE_IMAGE" npm run --silent types
+        ;;
+    backend-soak)
+        # the backend on its own port inside this container: nothing published,
+        # so it can run next to ./dod sim (docs/plans/backend.md, step 10)
+        shift
+        docker_args
+        exec docker run "${args[@]}" "$IMAGE" python src/backend/tests/soak.py "$@"
         ;;
     songs)
         # into cache/ in the project (DOD_CACHE_DIR, /work/cache); needs the internet
