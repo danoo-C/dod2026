@@ -6,7 +6,9 @@
     1. starts Docker Desktop if it isn't running and waits for it
     2. finds the board's COM port by its USB id, or waits for it
     3. starts the serial <-> TCP bridge (src/hcl/bridge/serial-bridge.ps1)
-    4. builds the image if it's missing (needs internet, once)
+    4. builds the image: every time, so new code never runs with the old
+       image (seconds when nothing changed; if it fails, e.g. offline, the
+       last image runs)
     5. finds the hotspot's address, name and password; makes a random key
        for the internal pages
     6. runs the container
@@ -24,8 +26,6 @@
     The board's COM port, if finding it by its USB id doesn't work.
 .PARAMETER Simulated
     No board: the simulated one inside the container, no bridge.
-.PARAMETER Rebuild
-    Build the image again, also when it exists (after the code changed).
 .PARAMETER WifiSsid
     The hotspot's name for the Wi-Fi QR code, if reading it from Windows fails.
 .PARAMETER WifiPassword
@@ -36,12 +36,11 @@
 .EXAMPLE
     start.bat -Simulated
 .EXAMPLE
-    start.bat -Port COM5 -Rebuild
+    start.bat -Port COM5
 #>
 param(
     [string]$Port = "",
     [switch]$Simulated,
-    [switch]$Rebuild,
     [string]$WifiSsid = "",
     [string]$WifiPassword = ""
 )
@@ -165,12 +164,19 @@ try {
         $serialUrl = $BridgeUrl
     }
 
-    # 4. the image
+    # 4. the image, built every time: after the code changed (a new download,
+    # a git pull) an old image would run the old code. Docker reuses the steps
+    # whose files didn't change, so with no change this takes seconds. It needs
+    # internet the first time and when a dependency changed (and Docker may
+    # want it to check the base images). If the build fails, the last image
+    # still runs, with a warning.
     & docker image inspect $Image *> $null
-    if ($Rebuild -or $LASTEXITCODE -ne 0) {
-        Say "building the image (needs internet; a few minutes the first time)..."
-        & docker build -t $Image $Root
-        if ($LASTEXITCODE -ne 0) { Fail "the image didn't build; is the notebook online?" }
+    $haveImage = $LASTEXITCODE -eq 0
+    if ($haveImage) { Say "updating the image to this folder's code..." } else { Say "building the image (needs internet; a few minutes the first time)..." }
+    & docker build -t $Image $Root
+    if ($LASTEXITCODE -ne 0) {
+        if (-not $haveImage) { Fail "the image didn't build; is the notebook online?" }
+        Warn "the image didn't build (offline, and a dependency changed?); starting the last one, it may run older code"
     }
 
     # 5. the address, the hotspot, the key

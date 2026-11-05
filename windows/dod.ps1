@@ -62,7 +62,7 @@ usage: dod <command> [args]      (in the project folder; dod.bat in PowerShell: 
 Run the app
   sim                                     backend + Vite on http://localhost:5173, simulated board
   dev                                     the same with the real board (through the bridge; or DOD_SERIAL)
-  backend                                 the backend alone on http://localhost:8000 (serves the last frontend-build)
+  backend                                 the backend alone on http://localhost:8000 (builds the frontend first if it changed)
   notebook                                the notebook's self-contained image, on http://localhost:8000
 
 Test
@@ -224,6 +224,28 @@ function Ensure-NodeModules($nargs) {
     }
 }
 
+# dod backend serves src\frontend\dist: build it first when it's missing or
+# older than the frontend's source (or the backend's schema, which its type
+# check reads), so port 8000 never shows an old frontend without saying so.
+function Build-FrontendIfChanged {
+    $f = Join-Path $Root "src\frontend"
+    $built = Join-Path $f "dist\index.html"
+    if (Test-Path -LiteralPath $built) {
+        $at = (Get-Item -LiteralPath $built).LastWriteTimeUtc
+        $sources = @("src", "index.html", "components.html", "package-lock.json", "vite.config.ts",
+                     "tsconfig.json", "tsconfig.node.json") | ForEach-Object { Join-Path $f $_ }
+        $sources += Join-Path $Root "src\backend\schema"
+        $newer = Get-ChildItem -LiteralPath $sources -Recurse -File -ErrorAction SilentlyContinue |
+            Where-Object { $_.LastWriteTimeUtc -gt $at } | Select-Object -First 1
+        if (-not $newer) { return }
+    }
+    Say "the frontend changed since the last frontend-build, building it"
+    $n = Node-Args
+    Ensure-NodeModules $n
+    & docker run @n $NodeImage npm run build
+    if ($LASTEXITCODE -ne 0) { Fail "the frontend didn't build (the errors are above)" }
+}
+
 function Without-Terminal($list) {
     return ,@($list | Where-Object { $_ -ne "-t" -and $_ -ne "-i" })
 }
@@ -340,6 +362,7 @@ try {
             $code = Run-Tests $rest
         }
         "backend" {
+            Build-FrontendIfChanged
             $a = Docker-Args (Resolve-Serial $(if ($env:DOD_SERIAL) { $env:DOD_SERIAL } else { "sim" }))
             # the dev key opens the internal pages: /internal/main?key=dev (docs/backend.md 9)
             $key = if ($env:DOD_INTERNAL_KEY) { $env:DOD_INTERNAL_KEY } else { "dev" }

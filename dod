@@ -51,7 +51,7 @@ usage: ./dod <command> [args]
 Run the app
   sim                                     backend + Vite on http://localhost:5173, simulated board
   dev                                     the same with the real board (/dev/ttyUSB0, or DOD_SERIAL)
-  backend                                 the backend alone on http://localhost:8000 (serves the last frontend-build)
+  backend                                 the backend alone on http://localhost:8000 (builds the frontend first if it changed)
   notebook                                the notebook's self-contained image, run here on http://localhost:8000
 
 Test
@@ -160,8 +160,9 @@ internet); after that everything starts in seconds.
     http://localhost:8000
     http://localhost:8000/internal/main?key=dev
 
-  The backend reloads on save; the frontend doesn't (run frontend-build
-  again). With the board:  DOD_SERIAL=/dev/ttyUSB0 ./dod backend
+  ./dod backend runs frontend-build by itself when the frontend changed since
+  the last one. The backend reloads on save; the frontend doesn't (start
+  ./dod backend again, or run frontend-build). With the board:  DOD_SERIAL=/dev/ttyUSB0 ./dod backend
 
 1.4  The notebook's image, tried in WSL first
 
@@ -187,8 +188,9 @@ internet); after that everything starts in seconds.
     cd C:\path\to\dod2026
     start.bat
 
-  It starts Docker Desktop, finds the board, starts the serial bridge, runs
-  the backend and opens the main screen full screen. Phones scan the QR code
+  It starts Docker Desktop, finds the board, starts the serial bridge, brings
+  the image up to the folder's code (seconds when nothing changed), runs the
+  backend and opens the main screen full screen. Phones scan the QR code
   (normally http://192.168.137.1:8000). To stop: close the main screen
   (Alt+F4) or press Ctrl+C in the console. Logs of the last run:
   %TEMP%\dod2026\ (bridge.log, backend.log).
@@ -197,7 +199,6 @@ internet); after that everything starts in seconds.
 
     start.bat -Simulated                                  no board, no bridge
     start.bat -Port COM5                                  the board's COM port, if it isn't found
-    start.bat -Rebuild                                    rebuild the image after the code changed (internet)
     start.bat -WifiSsid DOD2026 -WifiPassword heslo1234   if the hotspot's name can't be read
 
   (start.bat and the bridge are written but not tested on Windows yet:
@@ -241,7 +242,8 @@ internet); after that everything starts in seconds.
 
 ./dod backend
     The backend alone on http://localhost:8000, reloading on every save. It
-    serves the last ./dod frontend-build from src/frontend/dist.
+    serves src/frontend/dist, and builds it first (./dod frontend-build) when
+    the frontend's source is newer than that build.
 
 ./dod notebook
     Builds the self-contained image (dod2026-notebook: the code and the built
@@ -494,6 +496,25 @@ ensure_node_modules() {
     fi
 }
 
+# ./dod backend serves src/frontend/dist: build it first when it's missing or
+# older than the frontend's source (or the backend's schema, which its type
+# check reads), so port 8000 never shows an old frontend without saying so.
+frontend_if_changed() {
+    local f="$DIR/$FRONTEND" built="$DIR/$FRONTEND/dist/index.html"
+    if [[ -f "$built" && -z "$(find "$f/src" "$f/index.html" "$f/components.html" "$f/package-lock.json" \
+            "$f/vite.config.ts" "$f/tsconfig.json" "$f/tsconfig.node.json" "$DIR/src/backend/schema" \
+            -newer "$built" -print -quit)" ]]; then
+        return
+    fi
+    echo "dod: the frontend changed since the last frontend-build, building it" >&2
+    node_args
+    ensure_node_modules
+    if ! docker run "${nargs[@]}" "$NODE_IMAGE" npm run build >&2; then
+        echo "dod: the frontend didn't build (the errors are above)" >&2
+        exit 1
+    fi
+}
+
 # ./dod sim and ./dod dev: the backend in the background, Vite in front.
 # The browser only talks to Vite (5173), which forwards /api, /ws and /media.
 # Ctrl-C stops both.
@@ -610,6 +631,7 @@ case "$1" in
         run_tests "$@"
         ;;
     backend)
+        frontend_if_changed
         docker_args
         # Published on WSL's port 8000, which WSL also forwards to Windows' localhost.
         # The dev key opens the internal pages: /internal/main?key=dev (docs/backend.md 9).

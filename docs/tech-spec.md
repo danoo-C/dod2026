@@ -497,8 +497,10 @@ are cleaned up at the next start: an old bridge holding the COM port, the old
 container.
 
 Options: `start.bat -Simulated` (no board, no bridge), `-Port COM5` (if
-finding the board fails), `-Rebuild` (after the code changed),
-`-WifiSsid NAME -WifiPassword PASS` (if reading the hotspot fails).
+finding the board fails), `-WifiSsid NAME -WifiPassword PASS` (if reading
+the hotspot fails). It builds the image on every start, so a new copy of the
+code never runs with an old image; Docker reuses the unchanged steps, so this
+takes seconds when nothing changed, and if the build fails the last image runs.
 
 Everything else `./dod` does works on the notebook too: `dod.bat <command>`
 (`windows/dod.ps1`) has the same commands, in Docker Desktop, with the board
