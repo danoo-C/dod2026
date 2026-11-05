@@ -548,6 +548,8 @@ tools run in the Docker image, behind one wrapper script, `./dod`.
 ### 7.1 Commands
 
 ```sh
+./dod --help           # every command, one line each
+./dod --manual         # how to use each command, and full commands that launch the app
 ./dod build            # (re)build the dev image (the Dockerfile's dev stage)
 ./dod test             # each suite on its own: src/hcl, src/backend (pytest), src/frontend (tsc + Vitest)
 ./dod test backend -x  # one suite; a path picks its suite too: ./dod test src/backend/tests/test_imports.py

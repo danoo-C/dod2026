@@ -1,22 +1,8 @@
 #!/usr/bin/env bash
 # Dev wrapper for DOD 2026. Every tool runs in Docker, nothing is installed in WSL.
 #
-#   ./dod build                            (re)build the dev image
-#   ./dod test [hcl|backend|frontend] [args]  run the tests: all three suites, or one
-#   ./dod backend                          the backend on http://localhost:8000, reloads on every save
-#   ./dod sim                              backend + Vite on http://localhost:5173, simulated board
-#   ./dod dev                              the same with the board on /dev/ttyUSB0 (or DOD_SERIAL)
-#   ./dod npm <args>                       any npm command, in a Node container, in src/frontend
-#   ./dod frontend-build                   build the frontend into src/frontend/dist (the backend serves it)
-#   ./dod schema                           write the WebSocket messages' JSON Schema and TypeScript types
-#   ./dod songs [id ...]                   download the songs from songs.txt missing from cache/
-#   ./dod backend-soak [--minutes 30]      the soak test: the whole backend under a simulated open day
-#   ./dod notebook                         build the notebook's self-contained image and run it here (simulated board)
-#   ./dod shell                            a shell in the container
-#   ./dod hcl <tool> [args]                HCL tools: monitor, pattern, bench, repl (docs/hcl.md section 9)
-#   ./dod esp upload                       put src/hcl/esp/ (and protocol.py) on the board, reset it
-#   ./dod esp run <file.py>                run a MicroPython script on the board (it prints to here)
-#   ./dod esp repl                         a Python prompt on the board
+#   ./dod --help     every command, one line each
+#   ./dod --manual   how to use each command, and full commands that launch the app
 #
 # The project is mounted at /work. DOD_SERIAL says which board to talk to:
 # "sim" (default, the simulated board), /dev/ttyUSB0, or socket://host:port.
@@ -51,9 +37,364 @@ BACKEND_CMD=(sh -c 'python -c "from dod.main import settings_or_exit; settings_o
              --reload --reload-dir src/backend --reload-dir src/hcl --ws-max-size 65536)
 
 usage() {
-    echo "usage: ./dod build | test [hcl|backend|frontend] [args] | backend | sim | dev | npm <args> | frontend-build | schema | songs [id ...] | backend-soak [--minutes N] | notebook | shell | hcl <monitor|pattern|bench|repl> [args] | esp <upload|run|repl>" >&2
+    echo "usage: ./dod <command> [args]   (./dod --help lists the commands, ./dod --manual explains them)" >&2
     exit 1
 }
+
+show_help() {
+    cat <<'EOF'
+DOD 2026 dev wrapper: every tool runs in Docker, nothing is installed in WSL.
+
+usage: ./dod <command> [args]
+
+Run the app
+  sim                                     backend + Vite on http://localhost:5173, simulated board
+  dev                                     the same with the real board (/dev/ttyUSB0, or DOD_SERIAL)
+  backend                                 the backend alone on http://localhost:8000 (serves the last frontend-build)
+  notebook                                the notebook's self-contained image, run here on http://localhost:8000
+
+Test
+  test [hcl|backend|frontend] [args]      all three suites, or one; extra args go to pytest / Vitest
+  backend-soak [--minutes N|--seconds N]  the soak test: a simulated open day (default 30 min)
+
+Build
+  build                                   (re)build the dev image
+  frontend-build                          build the frontend into src/frontend/dist (what backend serves)
+  schema                                  write the WebSocket JSON Schema and the TypeScript types
+  npm <args>                              any npm command, in a Node container, in src/frontend
+
+Songs
+  songs [id ...]                          download the songs from songs.txt missing from cache/
+
+The board
+  hcl monitor [--send] [--seconds N]      watch the link: a status line every second, every event
+  hcl pattern [--speed X]                 wiring test: colours, the strip, the 8x8's rows and columns
+  hcl bench [--seconds N] [--max-fps N]   speed test, ends with PASS or FAIL
+  hcl repl                                ask main.py to step aside, for the Python prompt
+  esp upload                              put src/hcl/esp/ (and protocol.py) on the board, reset it
+  esp run <file.py>                       run a MicroPython script on the board, its output here
+  esp repl                                a Python prompt on the board
+
+Other
+  shell                                   a bash shell in the container
+  -h, --help                              this list
+  --manual                                how to use each command, and full commands to launch the app
+
+Settings: any DOD_* variable reaches the backend, e.g.  DOD_BRIGHTNESS=0.3 ./dod sim
+DOD_SERIAL picks the board: sim (default), /dev/ttyUSB0, socket://host:port.
+EOF
+}
+
+show_manual() {
+    cat <<'EOF'
+DOD 2026 - MANUAL
+=================
+
+Every command runs from the project folder, in WSL:
+
+    cd ~/spseke/dod2026
+
+./dod needs Docker. In Claude Code it must run outside the sandbox (inside
+it, Docker's socket is blocked: "permission denied ... docker.sock").
+The first command builds the dev image by itself (a few minutes, needs
+internet); after that everything starts in seconds.
+
+
+1. LAUNCHING THE APP
+--------------------
+
+1.1  Development, simulated board (no hardware needed)
+
+    ./dod sim
+
+  Then, in a browser on Windows:
+
+    http://localhost:5173                            the phone page (what visitors see)
+    http://localhost:5173/internal/main?key=dev      the main screen (click "Spustit" once, for the sound)
+    http://localhost:5173/internal/logging?key=dev   the fake terminal on its own
+    http://localhost:5173/components.html            every component, with fake data
+
+  Code changes reload by themselves, backend and frontend. Ctrl+C stops both.
+  Two visitors at once: a normal and a private window (F12 > device toolbar
+  makes them phone-sized).
+
+  With the Wi-Fi QR code on the main screen:
+
+    DOD_WIFI_SSID=DOD2026 DOD_WIFI_PASSWORD=heslo1234 ./dod sim
+
+  With a simulated board that misbehaves (unplugged every 30 s for 5 s):
+
+    DOD_SERIAL='sim?unplug_every=30&unplug_for=5' ./dod dev
+
+  (other options: latency_ms, drop, garbage, reboot_every, led_count,
+  color_order, seed - docs/hcl.md section 6)
+
+1.2  Development, the real board in WSL
+
+  In Windows PowerShell as administrator, the first time only:
+
+    usbipd list                       find the board ("CP210x"), note its BUSID, e.g. 2-3
+    usbipd bind --busid 2-3
+
+  Every time the board is plugged in (PowerShell, no admin needed after bind):
+
+    usbipd attach --wsl --busid 2-3
+
+  Then in WSL:
+
+    ./dod hcl pattern                 optional: check the wiring first
+    ./dod dev
+
+  Same addresses as 1.1. A board on another port:
+
+    DOD_SERIAL=/dev/ttyUSB1 ESP_PORT=/dev/ttyUSB1 ./dod dev
+
+1.3  The built app on port 8000 (the way the notebook serves it, code mounted)
+
+    ./dod frontend-build
+    ./dod backend
+
+    http://localhost:8000
+    http://localhost:8000/internal/main?key=dev
+
+  The backend reloads on save; the frontend doesn't (run frontend-build
+  again). With the board:  DOD_SERIAL=/dev/ttyUSB0 ./dod backend
+
+1.4  The notebook's image, tried in WSL first
+
+    ./dod notebook                              simulated board
+    DOD_SERIAL=/dev/ttyUSB0 ./dod notebook      the real board (attached as in 1.2)
+
+    http://localhost:8000
+    http://localhost:8000/internal/main?key=dev
+
+  It builds the image first (a few minutes the first time, needs internet).
+  The code is inside the image, so after a change run it again: it rebuilds.
+
+1.5  On the notebook (Windows) - the open day
+
+  Once beforehand: Docker Desktop installed, the whole project folder copied
+  over (with cache\ and its songs), the image built once with internet
+  (start.bat does that on its first run).
+
+  On the day: turn on the Mobile Hotspot (Settings > Network & internet >
+  Mobile hotspot), plug in the board's USB cable and the 5 V supply, then
+  double-click start.bat in the project folder - or from a Command Prompt:
+
+    cd C:\path\to\dod2026
+    start.bat
+
+  It starts Docker Desktop, finds the board, starts the serial bridge, runs
+  the backend and opens the main screen full screen. Phones scan the QR code
+  (normally http://192.168.137.1:8000). To stop: close the main screen
+  (Alt+F4) or press Ctrl+C in the console. Logs of the last run:
+  %TEMP%\dod2026\ (bridge.log, backend.log).
+
+  Options:
+
+    start.bat -Simulated                                  no board, no bridge
+    start.bat -Port COM5                                  the board's COM port, if it isn't found
+    start.bat -Rebuild                                    rebuild the image after the code changed (internet)
+    start.bat -WifiSsid DOD2026 -WifiPassword heslo1234   if the hotspot's name can't be read
+
+  (start.bat and the bridge are written but not tested on Windows yet:
+  docs/plans/hcl.md, stage 3.)
+
+1.6  Real phones during development
+
+  WSL forwards ports to Windows' localhost only, so a phone can't reach
+  ./dod sim until, on Windows:
+
+    1. %UserProfile%\.wslconfig gets   [wsl2]  networkingMode=mirrored
+    2. wsl --shutdown, then open WSL again
+    3. Windows Firewall allows port 5173
+
+  Then the phone (on the same Wi-Fi) opens http://<the PC's IP>:5173, and the
+  main screen's QR code points there with:
+
+    DOD_PUBLIC_URL=http://192.168.1.20:5173 ./dod sim
+
+
+2. THE COMMANDS
+---------------
+
+./dod sim
+    The backend (port 8000, simulated board) and the Vite dev server (port
+    5173) in two containers; the browser only talks to 5173, which forwards
+    /api, /ws and /media to the backend. The internal key is "dev" (change:
+    DOD_INTERNAL_KEY=...). Refuses to start if another sim or backend runs.
+
+./dod dev
+    The same as sim, with DOD_SERIAL (default /dev/ttyUSB0): the real board,
+    or any sim?... URL.
+
+./dod backend
+    The backend alone on http://localhost:8000, reloading on every save. It
+    serves the last ./dod frontend-build from src/frontend/dist.
+
+./dod notebook
+    Builds the self-contained image (dod2026-notebook: the code and the built
+    frontend inside, only cache/ mounted) and runs it on port 8000, like
+    start.bat does on the notebook. DOD_SERIAL=/dev/ttyUSB0 for the board.
+
+./dod test [hcl|backend|frontend] [args]
+    All three suites one after another, or one. A path picks its suite by
+    itself. Extra arguments go to pytest (hcl, backend) or Vitest (frontend).
+
+        ./dod test
+        ./dod test backend -x
+        ./dod test src/backend/tests/test_queue.py -k turn
+        ./dod test frontend tests/phone.test.tsx
+
+./dod backend-soak [--minutes N | --seconds N]
+    The whole backend for a long while under a simulated open day: 8 phones,
+    a main screen playing songs, a logging page, the board unplugged every
+    1-2 min. Prints a line a minute; PASS needs no errors, memory within
+    10 MB and 30 fps (+-1) every second. Runs next to ./dod sim. Don't use
+    the machine heavily meanwhile, or the fps check fails for no real reason.
+
+        ./dod backend-soak                 30 minutes (the step 10 check)
+        ./dod backend-soak --seconds 120   a quick try
+
+./dod build
+    (Re)builds the dev image (the Dockerfile's dev stage: the dependencies
+    only, the code is mounted). Needed after a dependency changes.
+
+./dod frontend-build
+    Type-checks and builds the frontend into src/frontend/dist, which
+    ./dod backend serves.
+
+./dod schema
+    After changing a message in src/backend/dod/api/messages.py: writes the
+    JSON Schema and the frontend's TypeScript types (both committed; the
+    tests fail when they are out of date).
+
+./dod npm <args>
+    Any npm command in src/frontend, in the Node container.
+
+        ./dod npm install --save-exact <package>
+        ./dod npm ls react
+
+./dod songs [id ...]
+    Downloads the songs from src/backend/dod/music/songs.txt that are not in
+    cache/ yet (~30 MB and ~15 s each, needs internet). With ids: only those.
+
+        ./dod songs
+        ./dod songs dQw4w9WgXcQ
+
+./dod hcl monitor [--send] [--seconds N]
+    Connects to the board, prints a status line every second and every
+    event - the first thing to run when something is wrong. --send adds a
+    dim test frame at 30 fps, so fps and round trips mean something.
+
+./dod hcl pattern [--speed X]
+    Wiring test; says what should be lit at each step: the strip red, green,
+    blue, one LED walking along it, each 8x8 row and column, a brightness
+    ramp. --speed 2 is twice as fast.
+
+./dod hcl bench [--seconds N] [--max-fps N]
+    Frames as fast as the board answers, for 20 s; prints fps, round trips,
+    timeouts, then PASS (>= 45 fps, no timeouts) or FAIL.
+
+./dod hcl repl
+    Asks main.py to stop, so a Python prompt can take over. Exit code 2
+    ("didn't answer") is fine when the board is at >>> already.
+
+    The hcl tools use the attached board when DOD_SERIAL isn't set, the
+    simulator otherwise (DOD_SERIAL=sim ./dod hcl bench). They all take
+    --url. The backend must not run at the same time: one port, one program.
+
+./dod esp upload
+    Copies src/hcl/esp/ and protocol.py to the board and resets it. Run it
+    after changing anything in src/hcl/esp/ or src/hcl/hcl/protocol.py.
+
+./dod esp run <file.py>
+    Runs a MicroPython script on the board without saving it; its output
+    comes here.
+
+        ./dod esp run src/hcl/esp_tests/protocol_selftest.py
+        ./dod esp run src/hcl/esp_tests/strip_test.py
+
+./dod esp repl
+    A Python prompt on the board (Ctrl+] leaves). The board's own program
+    starts again after a reset (EN button).
+
+./dod shell
+    A bash shell in the dev container, the project at /work.
+
+
+3. SETTINGS
+-----------
+
+Every DOD_* variable in your shell reaches the backend's container. A wrong
+value or an unknown name stops the backend with a message naming it.
+
+    DOD_SERIAL            sim          the board: sim, sim?option=value, /dev/ttyUSB0, socket://host:port
+    DOD_BAUD              115200       the serial speed
+    DOD_LED_COUNT         10           used until the board says how many it has
+    DOD_POWER_LIMIT_MA    1500         the strip's current limit
+    DOD_BRIGHTNESS        0.8          master brightness, 0-1
+    DOD_TURN_SECONDS      180          how long a visitor's turn lasts
+    DOD_INACTIVE_SECONDS  30           no command (or offline) this long: the turn ends
+    DOD_IDLE_SECONDS      30           nobody plays this long: idle mode
+    DOD_AUDIO_DELAY_MS    0            delay the lights, for a Bluetooth speaker (0-2000)
+    DOD_INTERNAL_KEY      dev / random the key for /internal/* (./dod: dev; start.bat: random)
+    DOD_PUBLIC_URL        localhost    the address in the phones' QR code (sim/dev: :5173, else :8000)
+    DOD_CACHE_DIR         /work/cache  where the songs are
+    DOD_LOG_LEVEL         INFO         the backend's real log
+    DOD_WIFI_SSID         -            the hotspot's name, for the Wi-Fi QR code (with the password)
+    DOD_WIFI_PASSWORD     -            its password, 8-63 characters
+
+    ESP_PORT              (first found) which /dev/tty* goes into the container
+
+Examples:
+
+    DOD_BRIGHTNESS=0.3 ./dod sim
+    DOD_TURN_SECONDS=30 DOD_IDLE_SECONDS=10 ./dod sim
+    DOD_AUDIO_DELAY_MS=200 ./dod notebook
+
+
+4. WHEN SOMETHING IS WRONG
+--------------------------
+
+"permission denied ... docker.sock"
+    ./dod ran inside Claude Code's sandbox; run it outside.
+
+"already running: dod2026-backend ..."
+    Another ./dod sim or ./dod backend runs. Stop it (Ctrl+C there), or:
+        docker stop dod2026-backend dod2026-vite
+
+"no board found" / "no such port"
+    Attach the board to WSL (1.2), check with:  ls /dev/ttyUSB*
+
+The strip or the 8x8 stays dark
+    ./dod hcl monitor shows whether the board answers; ./dod hcl pattern
+    whether the wiring is right; ./dod esp run src/hcl/esp_tests/strip_test.py
+    drives the strip from the board alone.
+
+A quick look at a running backend
+    curl localhost:8000/api/status     (board link, fps, mode, connections)
+
+More: docs/handoff.md (where things stand), docs/tech-spec.md (the design),
+docs/hcl.md (the board), docs/backend.md (the backend).
+EOF
+}
+
+# --help and --manual work without Docker
+case "${1:-}" in
+    -h|--help|help)
+        show_help
+        exit 0
+        ;;
+    --manual|manual)
+        if [[ -t 1 ]] && command -v less >/dev/null; then
+            show_manual | less -FRX
+        else
+            show_manual
+        fi
+        exit 0
+        ;;
+esac
 
 if ! command -v docker >/dev/null; then
     echo "dod: docker is not installed (see ~/spseke/esp/setup/README.md, One-time setup)" >&2
@@ -61,7 +402,8 @@ if ! command -v docker >/dev/null; then
 fi
 
 if [[ $# -eq 0 ]]; then
-    usage
+    show_help
+    exit 0
 fi
 
 if [[ "$1" == "build" ]]; then
@@ -372,6 +714,7 @@ case "$1" in
         exec docker run "${args[@]}" "$IMAGE" python -m "hcl.tools.$tool" "${@:3}"
         ;;
     *)
+        echo "dod: unknown command '$1'" >&2
         usage
         ;;
 esac
