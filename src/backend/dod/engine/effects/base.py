@@ -23,14 +23,24 @@ class Audio:
     """The latest spectrum from the main screen (music mode, step 8)."""
 
     bands: tuple[float, ...]  # 32 bands, low to high, 0-1
-    beat: bool = False
+    beat: bool = False  # a kick in this spectrum
     # kept by dod.music.audio, so the music effect can stay pure:
-    beats: tuple[float, ...] = ()  # seconds since each of the last few beats, newest first
-    count: int = 0  # beats so far; the light show changes scene every 16
+    beats: tuple[float, ...] = ()  # seconds since each of the last few kicks, newest first
+    count: int = 0  # kicks so far; the light show changes scene every 16
     travel: float = 0.0  # loudness summed over time: grows faster when the music is louder
     bass: float = 0.0  # how much bass the song has lately, 0-1 (smoothed over ~1.5 s)
     bass_travel: float = 0.0  # bass summed over time: the colours drift faster with more bass
-    kick_sum: float = 0.0  # the bass at each beat, summed: the colours jump further on bassy kicks
+    kick_sum: float = 0.0  # the bass at each kick, summed: the colours jump further on bassy kicks
+    snares: tuple[float, ...] = ()  # seconds since the last few snares (claps), newest first
+    snare_count: int = 0
+    hats: tuple[float, ...] = ()  # seconds since the last few hi-hats, newest first
+    hat_count: int = 0
+    drop: float = math.inf  # seconds since the last drop (a kick with the bass back, in a calm part)
+    drop_count: int = 0
+    level: float = 0.0  # loudness 0-1, smoothed over ~0.35 s
+    calm: float = 0.0  # 0-1: no kicks lately, or the bass gone (a breakdown, a quiet intro)
+    build: float = 0.0  # 0-1: a calm part getting louder or busier, towards a drop
+    held: tuple[float, ...] = ()  # the bands, rising at once and falling slowly (the 8x8's bars); () = bands
 
 
 @dataclass(frozen=True)

@@ -2,9 +2,8 @@
 // analyser data.
 import { describe, expect, it } from "vitest";
 
-import { BeatDetector, GAP } from "../src/apps/Music/beat";
+import { BeatDetector, GAP, MIN_FLUX_DB } from "../src/apps/Music/beat";
 import {
-  AutoGain,
   BANDS,
   bandCentres,
   bandEdges,
@@ -71,30 +70,6 @@ describe("toBands", () => {
   });
 });
 
-describe("AutoGain", () => {
-  it("a quiet song moves the lights as much as a loud one", () => {
-    const quiet = new AutoGain();
-    let out: number[] = [];
-    for (let i = 0; i < 300; i++) out = quiet.apply([0.3, 0.15, 0.05]);
-    expect(out[0]).toBeCloseTo(1);
-    expect(out[1]).toBeCloseTo(0.5);
-  });
-
-  it("follows a louder moment at once and lets go slowly", () => {
-    const g = new AutoGain();
-    g.apply([0.3]);
-    expect(g.apply([0.9])[0]).toBe(1);
-    expect(g.apply([0.3])[0]).toBeLessThan(0.35); // the peak is still 0.9
-  });
-
-  it("silence isn't blown up into noise", () => {
-    const g = new AutoGain();
-    let out: number[] = [];
-    for (let i = 0; i < 2000; i++) out = g.apply([0.01, 0.0]);
-    expect(out[0]).toBeLessThan(0.1);
-  });
-});
-
 describe("LightLevels", () => {
   // a band at `db` dBFS, as toBands gives it (0-1 over MIN_DB..MAX_DB)
   const at = (db: number) => (db - MIN_DB) / (MAX_DB - MIN_DB);
@@ -153,36 +128,46 @@ describe("LightLevels", () => {
 
 describe("BeatDetector", () => {
   const frames = (seconds: number) => Array.from({ length: Math.round(seconds * 30) }, (_, i) => i / 30);
-  const bands = (low: number) => [low, low, low, low, ...Array<number>(28).fill(0.3)];
+  const DB = MAX_DB - MIN_DB;
+  // the bass at `low` dBFS over a steady rest of the song, as toBands gives it
+  const bands = (low: number) => [...Array<number>(5).fill((low - MIN_DB) / DB), ...Array<number>(27).fill(0.5)];
 
-  it("finds the beats of a 120 BPM kick", () => {
+  it("finds the kicks of a 120 BPM song: the bass jumps a few dB", () => {
     const d = new BeatDetector();
     const beats = frames(10).filter((t) => {
       const kick = t % 0.5 < 0.07; // 2 kicks a second, ~2 frames each
-      return d.push(bands(kick ? 0.9 : 0.25), t);
+      return d.push(bands(kick ? -24 : -30), t); // +6 dB: values 0.73 -> 0.80, far from 1.4x
     });
     expect(beats.length).toBeGreaterThanOrEqual(18); // ~20 in 10 s
     expect(beats.length).toBeLessThanOrEqual(21);
     for (let i = 1; i < beats.length; i++) expect((beats[i] ?? 0) - (beats[i - 1] ?? 0)).toBeGreaterThanOrEqual(GAP);
   });
 
-  it("finds none in white noise", () => {
-    // white noise is flat; after the analyser's smoothing its bands only wobble a little
+  it("finds none in a steady sound that wobbles a little", () => {
     let seed = 1;
     const random = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const d = new BeatDetector();
-    const beats = frames(20).filter((t) => d.push(Array.from({ length: 32 }, () => 0.5 + (random() - 0.5) * 0.1), t));
+    const wobble = MIN_FLUX_DB / DB; // never a rise of MIN_FLUX_DB on average
+    const beats = frames(20).filter((t) => d.push(Array.from({ length: 32 }, () => 0.6 + (random() - 0.5) * wobble), t));
     expect(beats).toEqual([]);
   });
 
-  it("finds none in silence", () => {
+  it("finds none in silence, nor in a held bass note", () => {
     const d = new BeatDetector();
-    expect(frames(5).filter((t) => d.push(bands(0.0), t))).toEqual([]);
+    expect(frames(5).filter((t) => d.push(bands(-100), t))).toEqual([]);
+    expect(frames(5).filter((t) => d.push(bands(-20), t)).length).toBeLessThanOrEqual(1); // its start, at most
   });
 
-  it(`never more often than every ${GAP} s, even with a kick every frame`, () => {
+  it("a small rise is no kick", () => {
     const d = new BeatDetector();
-    const beats = frames(3).filter((t, i) => d.push(bands(i % 2 === 0 ? 1.0 : 0.05), t));
+    const beats = frames(10).filter((t) => d.push(bands(t % 0.5 < 0.07 ? -28 : -30), t)); // +2 dB
+    expect(beats).toEqual([]);
+  });
+
+  it(`never more often than every ${GAP} s, even with a kick every 4th frame`, () => {
+    const d = new BeatDetector();
+    const beats = frames(3).filter((t, i) => d.push(bands(i % 4 === 0 ? -15 : -40), t)); // 7.5 a second
+    expect(beats.length).toBeGreaterThan(3);
     for (let i = 1; i < beats.length; i++) expect((beats[i] ?? 0) - (beats[i - 1] ?? 0)).toBeGreaterThanOrEqual(GAP);
   });
 });

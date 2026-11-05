@@ -91,6 +91,17 @@ cd ~/spseke/dod2026
 
 ## Built today
 
+- **The music light show, redesigned** (backend.md 7.5). The kick detector
+  was broken on real music – it compared dB values against 1.4× their
+  average and found 4–38 kicks in a whole song; it is now spectral flux and
+  finds most of them. The backend also finds snares, hi-hats, calm parts,
+  builds and drops, and the strip is layered from them: a moving colourful
+  base held at a steady brightness, kick hits in 5 shapes, snare flashes,
+  hi-hat glints, a riser in builds, a white hit and a new scene at drops.
+  The 8x8's bars now fall slowly. Checked offline on all 10 songs (their
+  spectra computed the way the browser does): no frame held by the flash
+  limit. **To do: watch it on the real strip** (`./dod dev`, play Sandstorm
+  and L'Amour Toujours – both have a breakdown, a build and a drop).
 - **HCL stage 2 committed** (the board's code, `./dod esp`, the late-HELLO
   fix in the link). Pytest no longer walks into `esp/` and `esp_tests/`
   (MicroPython, they import `machine`).

@@ -9,7 +9,7 @@
 // Two ways on from there:
 // - the lights (LightLevels): tilted towards the treble, and only the top
 //   WINDOW_DB below the recent peak lit, so quiet parts go dark
-// - the beat (AutoGain, then beat.ts): untilted, where the kick drum is
+// - the kick (beat.ts): untilted, where the kick drum is
 
 export const BANDS = 32;
 export const LOW_HZ = 40;
@@ -87,28 +87,5 @@ export class LightLevels {
     this.peak = Math.max(PEAK_FLOOR_DB, ...levels, this.peak - PEAK_FALL_DB);
     const bottom = this.peak - WINDOW_DB;
     return levels.map((l) => Math.min(1, Math.max(0, (l - bottom) / WINDOW_DB)) ** CURVE);
-  }
-}
-
-/**
- * For the beat detector: a slow automatic gain, the loudest band of the last
- * few seconds becomes 1.
- * The peak follows a louder moment at once and lets go slowly (DECAY per
- * frame), with a floor, so silence isn't blown up into noise.
- */
-export class AutoGain {
-  private peak: number;
-
-  constructor(
-    private readonly decay = 0.995, // per frame: at 30 a second, about halving in 4-5 s
-    private readonly floor = 0.15,
-  ) {
-    this.peak = floor;
-  }
-
-  apply(bands: readonly number[]): number[] {
-    const loudest = Math.max(0, ...bands);
-    this.peak = Math.max(this.floor, loudest, this.peak * this.decay);
-    return bands.map((b) => Math.min(1, b / this.peak));
   }
 }

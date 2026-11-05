@@ -607,7 +607,10 @@ Built:
   stays quiet). `apps/Music/beat.ts`: the lowest 4 bands' energy above 1.4 ×
   its average over 1 s, above 0.15, at least 0.3 s apart. The "white noise"
   test feeds flat bands with a small wobble, which is what noise looks like
-  after the analyser's smoothing.
+  after the analyser's smoothing. *(Replaced on 2026-11-05: on real songs
+  this found 4–38 kicks a song, since the bands are in dB. `beat.ts` is now
+  spectral flux on the 5 lowest bands and `AutoGain` is gone; see
+  backend.md 7.5.)*
 - the spectrum: `requestAnimationFrame`, sent at most every 1/30 s, only while
   the video plays and the page is visible.
 - `tests/setup.ts`: jsdom's `play()`, `pause()` and `load()` only log "not

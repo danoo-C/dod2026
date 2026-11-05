@@ -13,7 +13,7 @@ import { useEffect, useRef } from "react";
 import { useServerClock, useStand, useStandActions } from "../../api/useStand";
 import { connectAnalyser, type Analyser } from "./audioGraph";
 import { BeatDetector } from "./beat";
-import { AutoGain, bandEdges, LightLevels, toBands } from "./spectrum";
+import { bandEdges, LightLevels, toBands } from "./spectrum";
 
 export const POSITION_MS = 1000;
 export const SPECTRUM_MS = 1000 / 30;
@@ -88,7 +88,6 @@ export function Player({ visible }: { visible: boolean }) {
     if (analyser === null) return;
     const edges = bandEdges(analyser.sampleRate, analyser.fftSize);
     const bins = new Uint8Array(analyser.fftSize / 2);
-    const gain = new AutoGain(); // for the beat
     const lights = new LightLevels(); // for the strip and the 8x8
     const beats = new BeatDetector();
     let last = -Infinity;
@@ -99,7 +98,7 @@ export function Player({ visible }: { visible: boolean }) {
       last = now;
       analyser.read(bins);
       const raw = toBands(bins, edges);
-      const beat = beats.push(gain.apply(raw), now / 1000);
+      const beat = beats.push(raw, now / 1000); // the kick, on the untilted bands
       sendRef.current({ type: "spectrum", bands: lights.apply(raw), beat });
     };
     frame = requestAnimationFrame(step);

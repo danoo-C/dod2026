@@ -467,36 +467,58 @@ strip, every 8x8 animation stays under the flash limit on its own.
 
 ### 7.5 The music light show (strip)
 
-`effects/music.py`. The kick drives it. Every kick:
+`effects/music.py`. The strip is built from layers, each driven by something
+found in the song:
 
-- **pulses** the strip: instant attack, ~0.15 s decay, stronger with more
-  bass in the kick, whiter at the peak
-- **moves the colour on** by 0.7 × the song's bass: a bassy song jumps to
-  a new colour on nearly every kick, a light one only shifts it; between
-  kicks the colour drifts, faster with more bass
+| Layer | Driven by | What it does |
+|---|---|---|
+| base | the spectrum, the loudness | a moving, many-coloured picture: one of three looks (the spectrum with the bass in the middle, a scrolling gradient, two counter-running waves); faster when louder; its colours move on with every kick, further with more bass |
+| kick | a kick | a hit in the kick's colour, in the scene's shape: burst from the centre, whole strip, alternating halves, comet from alternate ends, scattered spots |
+| snare | a snare / clap | the outer 3 LEDs of one side in the palette's opposite colour, the other side next time |
+| hi-hat | a hi-hat | a glint on a random LED |
+| calm | no kicks for 2 s, or the bass under half the song's loudest | the base turns into slow, dimmer waves |
+| build | a calm part getting louder, or a snare roll | a riser fills the strip from both ends towards the middle, in stripes running inwards, faster and whiter as it grows |
+| drop | a kick with the bass back, after 4 s of calm | a full white hit, and the next scene at once |
 
-Between kicks: a dim background in the palette's opposite colour, growing
-from 0 with loudness (silence is dark). On top: white sparkles from the
-treble, one LED at a time. Every 16 beats the pulse changes shape (whole
-strip / from the centre / alternating halves / comets from alternate ends)
-together with the palette (5 palettes for 4 shapes, so the pairs keep
-changing).
+Every 32 kicks (~8 bars) and at every drop the scene changes: kick shape (5),
+base look (3) and palette (7) in different cycles, so the combinations keep
+changing. The 8x8 shows 8 bars of the spectrum that jump up at once and fall
+at most 0.8 of their height a second.
 
-**Flash limit.** One pulse is one flash; 3 a second are allowed. Above
-~136 BPM the pulses go half-time, and one sparkle at a time keeps the
-strip's average from adding flashes between kicks; simulated whole songs
-at 90–200 BPM never need the limit (`tests/test_music_audio.py`). The limit
-itself is unchanged.
+**Flash limit.** Planned for, not hit. The flash limit counts steps of the
+strip's *average* brightness, so the base is scaled to a brightness that
+follows only the loudness (~0.35 s): its pattern and colours can change at
+any speed. Snares and glints are small (under a step together). Only kicks
+and drops change the average by a step, one flash each, and the main screen
+sends at most one kick every 0.34 s. In a fast song (kicks closer than
+0.44 s) every second kick is a small hit: new colours and shape, no step.
+The 8x8's slowly falling bars keep it under the limit too. Tested on
+simulated songs at 90–200 BPM with a breakdown, a build and a drop
+(`tests/test_music_audio.py`), and checked offline on the spectra of the 10
+songs of the stand (computed the way the browser does): no frame held, at
+brightness 1.0 or 0.8. The limit itself is unchanged.
 
-Effects are pure, so what the show needs from the past is kept by
-`music/audio.py` on the delayed timeline and handed over in `Audio`: the
-ages of the last 4 beats, the beat count, `travel` (loudness over time),
-`bass` (smoothed over ~1.5 s), `bass_travel` (bass over time) and
-`kick_sum` (the bass at each beat, summed). The main screen shapes the bands
+**What is found where.** The kick is found on the main screen, on the
+untilted bands (`beat.ts`): spectral flux – how many dB the 5 lowest bands
+rose since the last frame – above 3 dB and an outlier against the last
+1.5 s, at most one every 0.34 s. (The first version compared the level with
+1.4 × its average, but the bands are in dB, where a kick is a few percent:
+it found 4–38 kicks in a whole song; this one finds most of them.) The rest
+is found by `music/audio.py` on the bands as sent: snares and hi-hats are
+onsets of the mid (~400 Hz–3 kHz) and top (~5 kHz+) bands, the same way;
+`level`, `calm`, `build` and drops from the loudness, the bass and the
+kicks. The song's loudest bass starts over after 1 s without spectra (the
+next song).
+
+Effects are pure, so all of it is kept by `music/audio.py` on the delayed
+timeline and handed over in `Audio`: the ages of the last few kicks, snares,
+hi-hats and the last drop, their counts, `level`, `calm`, `build`, `held`
+(the 8x8's falling bars), and the sums the colours move with: `travel`
+(loudness over time), `bass` (smoothed over ~1.5 s), `bass_travel` and
+`kick_sum` (the bass at each kick, summed). The main screen shapes the bands
 for the lights before sending them (`spectrum.ts`, `LightLevels`): +4.5 dB
 per octave above 1 kHz so the treble shows as much as the bass, and only the
-top 30 dB below the recent peak lit, so quiet parts go dark. The beat is
-detected on the untilted bands; at most one every 0.34 s.
+top 30 dB below the recent peak lit, so quiet parts go dark.
 
 ## 8. The queue
 
