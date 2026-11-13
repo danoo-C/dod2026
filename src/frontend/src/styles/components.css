@@ -279,6 +279,51 @@
   display: block;
 }
 
+/* ---------- Brand: the school's logo, the author's Instagram ---------- */
+.school-logo {
+  display: block;
+  flex: none;
+  height: auto; /* the width comes from where it is used */
+}
+.author {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font: 600 11px/1 var(--f-mono);
+  color: var(--muted);
+}
+.author img {
+  display: block;
+  width: var(--author-w, 140px);
+  height: auto;
+}
+.author-link {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 10px 20px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--panel);
+  text-decoration: none;
+}
+.author-link span {
+  font: 600 10px/1 var(--f-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.author-link b {
+  font: 800 16px/1.1 var(--f-display);
+  background: linear-gradient(90deg, var(--warm), var(--hot) 55%, var(--vio));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* ---------- Countdown ---------- */
 .countdown {
   font: 700 14px/1 var(--f-mono);

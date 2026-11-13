@@ -9,6 +9,7 @@ import { Drawing } from "../apps/Manual/Drawing";
 import { Params } from "../apps/Manual/Params";
 import { Presets } from "../apps/Manual/Presets";
 import { SongList } from "../apps/Music/SongList";
+import { AuthorLink, SchoolLogo } from "../components/Brand";
 import { Countdown, useTick } from "../components/Countdown";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { LivePreview, LiveStrip } from "../components/Preview";
@@ -29,7 +30,10 @@ export function Phone() {
     <div className="ph">
       <header className="ph-top">
         <span className="logo">
-          DOD<em>·</em>26
+          <SchoolLogo size={28} />
+          <span>
+            DOD<em>·</em>26
+          </span>
         </span>
         <LiveStrip />
       </header>
@@ -101,6 +105,7 @@ function Ended() {
         <button type="button" className="wide-btn primary" onClick={() => send({ type: "join_queue" })}>
           Znova do radu
         </button>
+        <AuthorLink />
       </div>
     </div>
   );

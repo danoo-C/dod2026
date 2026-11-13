@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PRESETS from "../../backend/schema/presets.json";
 import { ServerClock } from "../src/api/clock";
 import type { PresetInfo, QueuePart, StateMessage, You } from "../src/api/messages";
+import { INSTAGRAM_URL, SCHOOL } from "../src/components/Brand";
 import { routes } from "../src/routes";
 import { phoneScreen, waitSeconds } from "../src/screens/phoneScreen";
 import { FakeWebSocket, install, stateAt, WELCOME, you } from "./support/fakes";
@@ -83,6 +84,8 @@ describe("the phone", () => {
     await open();
     server(stateAt(NOW, { controller: "b210", waiting: 2 }), you());
     expect(screen.getByText("Ovládaj svetlá na stánku")).toBeTruthy();
+    expect(screen.getByRole("img", { name: SCHOOL })).toBeTruthy(); // in the header
+    expect(screen.queryByRole("link")).toBeNull(); // the author's link waits for the end of a turn
     expect(screen.getByText(/čaká 2 ľudia/)).toBeTruthy();
     fireEvent.click(button("Postaviť sa do radu"));
     expect(sent()).toEqual([{ type: "join_queue" }]);
@@ -168,6 +171,9 @@ describe("the phone", () => {
     server(stateAt(NOW + 2, { controller: "b210", waiting: 0 }), you({ position: null }));
     expect(screen.getByText("Tvoj čas skončil")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Farba" })).toBeNull(); // no controls any more
+    const author = screen.getByRole("link", { name: /@danoodnk/ });
+    expect(author.getAttribute("href")).toBe(INSTAGRAM_URL);
+    expect(author.getAttribute("target")).toBe("_blank"); // the stand's page stays open behind it
     fireEvent.click(button("Znova do radu"));
     expect(sent().at(-1)).toEqual({ type: "join_queue" });
     server(stateAt(NOW + 3, { controller: "b210", waiting: 1 }), you({ position: 1 }));

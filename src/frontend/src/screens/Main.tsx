@@ -3,7 +3,8 @@
 //   ┌ terminal ┬──────────── right part ─────────────┐
 //   │ (25-33 %)│ a song: its video (Player)          │
 //   │          │ otherwise: big QR codes, the queue, │
-//   │          │ the large preview                   │
+//   │          │ the large preview, the school's     │
+//   │          │ logo, the author's Instagram        │
 //   │          ├──────────── info bar ───────────────┤
 //   │          │ what plays · preview · queue · QR   │
 //   └──────────┴─────────────────────────────────────┘
@@ -17,6 +18,7 @@ import { AdminPanel, TERM_MAX, TERM_MIN, useAdminShortcut, useKickShortcut } fro
 import { primeAudio } from "../apps/Music/audioGraph";
 import { Player } from "../apps/Music/Player";
 import { LiveBadge } from "../components/Badge";
+import { AuthorCard, SCHOOL, SchoolLogo } from "../components/Brand";
 import { useTick } from "../components/Countdown";
 import { LivePreview } from "../components/Preview";
 import { Qr, wifiQr } from "../components/Qr";
@@ -35,6 +37,7 @@ export function StartGate({ children }: { children: ReactNode }) {
   if (started) return <>{children}</>;
   return (
     <div className="start">
+      <SchoolLogo size={128} />
       <h1>DOD 2026 · Svetelná show</h1>
       <p>Klikni raz, aby prehliadač dovolil zvuk. Potom sa obrazovka pripojí k stánku.</p>
       <button
@@ -113,7 +116,8 @@ function QrCodes({ size }: { size: number | string }) {
   );
 }
 
-/** No song: the big QR codes, the queue, the large preview – the stand inviting people. */
+/** No song: the big QR codes, the queue, the large preview – the stand
+ * inviting people; the school above it, the author's Instagram under the codes. */
 function Attract() {
   const wifi = useStand((s) => s.welcome?.wifi ?? null);
   const waiting = useStand((s) => s.state?.queue.waiting ?? 0);
@@ -121,6 +125,10 @@ function Attract() {
   return (
     <div className="idle" data-testid="attract">
       <div>
+        <div className="idle-school">
+          <SchoolLogo size={60} />
+          <span>{SCHOOL} · Deň otvorených dverí 2026</span>
+        </div>
         <h2>Naskenuj kód a ovládaj svetlá</h2>
         <p>
           {wifi !== null
@@ -132,7 +140,10 @@ function Attract() {
         </p>
         <LivePreview size="large" />
       </div>
-      <QrCodes size="clamp(110px, 13vw, 190px)" />
+      <div className="idle-side">
+        <QrCodes size="clamp(110px, 13vw, 190px)" />
+        <AuthorCard />
+      </div>
     </div>
   );
 }

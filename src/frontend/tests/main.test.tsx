@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { StateMessage, Welcome } from "../src/api/messages";
 import { isAdminShortcut, isKickShortcut, KICK_COOLDOWN_MS } from "../src/components/AdminPanel";
+import { INSTAGRAM, SCHOOL } from "../src/components/Brand";
 import { routes } from "../src/routes";
 import { FakeWebSocket, install, stateAt, WELCOME, you, type FakeSession } from "./support/fakes";
 
@@ -116,6 +117,20 @@ describe("the right part", () => {
     await start({ ...MAIN, wifi: null });
     expect(qrLabels()).toEqual(["Stránka"]);
     expect(screen.getByText("Otvor stránku v mobile a postav sa do radu.")).toBeTruthy();
+  });
+
+  it("no song: the school's logo above, the author's Instagram apart from the stand's codes", async () => {
+    await start();
+    const attract = within(screen.getByTestId("attract"));
+    expect(attract.getByRole("img", { name: SCHOOL })).toBeTruthy();
+    expect(attract.getByRole("img", { name: `Instagram @${INSTAGRAM}` })).toBeTruthy();
+    expect(attract.getByText("Autor projektu")).toBeTruthy();
+    expect(qrLabels()).toEqual(["1. Wi-Fi", "2. Stránka"]); // not one of the numbered steps
+  });
+
+  it("a song: the Instagram card goes with the attract screen", async () => {
+    await start(MAIN, music());
+    expect(screen.queryByRole("img", { name: `Instagram @${INSTAGRAM}` })).toBeNull();
   });
 
   it("the QR codes hold the page's address and the hotspot", async () => {

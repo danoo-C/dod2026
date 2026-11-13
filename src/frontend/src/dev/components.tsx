@@ -6,6 +6,7 @@ import { createRoot } from "react-dom/client";
 import type { HardwarePart, LogLine, Preview as PreviewMessage } from "../api/messages";
 import type { Status } from "../api/socket";
 import { Badge } from "../components/Badge";
+import { AuthorCard, AuthorLink, SchoolLogo } from "../components/Brand";
 import { Countdown } from "../components/Countdown";
 import { LoadingScreen } from "../components/LoadingScreen";
 import { Preview } from "../components/Preview";
@@ -127,6 +128,14 @@ function Gallery() {
         <Qr value="http://192.168.137.1:8000" label="2. Stránka" size={120} />
         <Qr value={wifiQr("DOD-SPSE", "svetlo2026")} label="1. Wi-Fi" size={120} />
         <Qr value="http://192.168.137.1:8000" label="malý" />
+      </Section>
+      <Section title="Brand: the school, the author">
+        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap" }}>
+          <SchoolLogo size={96} />
+          <SchoolLogo size={26} />
+          <AuthorCard />
+          <AuthorLink />
+        </div>
       </Section>
       <Section title="Countdown: 3 minutes from opening this page">
         <Countdown to={turnEnds} />
