@@ -525,7 +525,8 @@ Built:
   backend change needed. A reload asks again; the browser wants the click
   on every load anyway.
 - `components/AdminPanel.tsx`: opens with Ctrl+Alt+D (by `e.code`, so a
-  Slovak keyboard's AltGr+D works), Esc or a click outside closes it, not in
+  Slovak keyboard's AltGr+D works; AltGraph counts as Ctrl+Alt, which is
+  how Firefox on Windows reports it), Esc or a click outside closes it, not in
   the page until opened. Skip (greyed out with nobody in control), pause /
   resume (following `queue.paused`), stop the song (greyed out without one),
   the terminal's width 25–33 % (`localStorage`, `dod.termWidth`), and

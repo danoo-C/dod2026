@@ -13,9 +13,15 @@ export const TERM_MIN = 25;
 export const TERM_MAX = 33;
 export const KICK_COOLDOWN_MS = 3000; // a second Ctrl+Alt+K this soon is ignored: the next person keeps their turn
 
-/** Ctrl+Alt+<key>, wherever the focus is. By key position (e.code), so a Slovak keyboard's AltGr works too. */
+/**
+ * Ctrl+Alt+<key>, wherever the focus is. By key position (e.code), so the
+ * letter a Slovak keyboard's AltGr makes of it (Đ, ł) doesn't matter. On
+ * Windows Ctrl+Alt is AltGr: Edge and Chrome report Ctrl and Alt, Firefox
+ * reports AltGraph instead (ctrlKey and altKey false), so either counts.
+ */
 function isCtrlAlt(e: KeyboardEvent, code: string): boolean {
-  return e.ctrlKey && e.altKey && !e.shiftKey && !e.metaKey && e.code === code;
+  const ctrlAlt = (e.ctrlKey && e.altKey) || e.getModifierState("AltGraph");
+  return ctrlAlt && !e.shiftKey && !e.metaKey && e.code === code;
 }
 
 /** Ctrl+Alt+D: open the panel. */

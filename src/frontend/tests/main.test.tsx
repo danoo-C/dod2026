@@ -245,9 +245,18 @@ describe("the admin panel", () => {
     const key = (init: KeyboardEventInit) => new KeyboardEvent("keydown", init);
     expect(isAdminShortcut(key({ code: "KeyD", ctrlKey: true, altKey: true }))).toBe(true);
     expect(isAdminShortcut(key({ code: "KeyD", key: "Đ", ctrlKey: true, altKey: true }))).toBe(true); // Slovak AltGr
+    expect(isAdminShortcut(key({ code: "KeyD", key: "Đ", modifierAltGraph: true }))).toBe(true); // the same in Firefox
     expect(isAdminShortcut(key({ code: "KeyD", ctrlKey: true }))).toBe(false);
     expect(isAdminShortcut(key({ code: "KeyD", ctrlKey: true, altKey: true, shiftKey: true }))).toBe(false);
+    expect(isAdminShortcut(key({ code: "KeyD", modifierAltGraph: true, shiftKey: true }))).toBe(false);
     expect(isAdminShortcut(key({ code: "KeyF", ctrlKey: true, altKey: true }))).toBe(false);
+    expect(isAdminShortcut(key({ code: "KeyF", modifierAltGraph: true }))).toBe(false);
+  });
+
+  it("opens in Firefox too: there Ctrl+Alt on a Slovak keyboard is AltGr, without Ctrl and Alt", async () => {
+    await start();
+    fireEvent.keyDown(window, { code: "KeyD", key: "Đ", modifierAltGraph: true });
+    expect(screen.getByRole("dialog")).toBeTruthy();
   });
 });
 
@@ -293,6 +302,7 @@ describe("Ctrl+Alt+K", () => {
     const key = (init: KeyboardEventInit) => new KeyboardEvent("keydown", init);
     expect(isKickShortcut(key({ code: "KeyK", ctrlKey: true, altKey: true }))).toBe(true);
     expect(isKickShortcut(key({ code: "KeyK", key: "ł", ctrlKey: true, altKey: true }))).toBe(true); // Slovak AltGr
+    expect(isKickShortcut(key({ code: "KeyK", key: "ł", modifierAltGraph: true }))).toBe(true); // the same in Firefox
     expect(isKickShortcut(key({ code: "KeyK", ctrlKey: true }))).toBe(false);
     expect(isKickShortcut(key({ code: "KeyK", ctrlKey: true, altKey: true, shiftKey: true }))).toBe(false);
     expect(isKickShortcut(key({ code: "KeyD", ctrlKey: true, altKey: true }))).toBe(false);
